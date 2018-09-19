@@ -30,6 +30,29 @@
  * negotiate a specific contract with a legal representative of CEA.
  * =====================================================================================================================
  */
+
+/**
+ * Contribution/modification begun by NSCL/FRIB September 19, 2018
+ * This notice is required by the CeCILL license above.
+ * The intent of this modification is to allow the main to provide data from
+ * GET into NSCL ring buffers.  Specifically
+ *
+ *   - Command line processing will be modified to allow ring output processing
+ *      to be selected.
+ *   - Command line processing will be modified to allow the user to supply a
+ *     ringbuffer destination.
+ *   - Command line processing will be modified to allow the user to specify a source id
+ *     to be used to tag ring item body headers.
+ *   - Command line processing will be modified to support the choice of
+ *     trigger number or timestamp as the timestamp in event body headers.
+ *
+ *  @note to support the added flexibility required, it's likely we'll modify
+ *        command processing to use gengetopt so that we can get it to do
+ *        some of sanity checking for us (e.g. ICE parameters are only needed
+ *        if ICE transport is specified.  Similarly the NSCLDAQ parameters
+ *        are only needed if ring buffer outputter is selected).
+*/
+
 #include "mdaq/DefaultPortNums.h"
 #include "mdaq/utl/CmdLineArgs.h"
 #include "mdaq/utl/Server.h"

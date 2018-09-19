@@ -1,0 +1,24 @@
+package "nsclDataRouter"
+version  "1.0"
+
+#
+#    Defines the options for the data router.
+#
+
+#  Options we need regardless:
+
+option "controlservice" c "Control service <ipaddr:port>" string optional
+option "dataservice"    d "Data transport service <ipaddr:port>" string optional
+option "protocol"       p "Data transport protocol" values="ICE","TCP","FDT" optional default="TCP"
+option "icearg"         i "Argument for ICE protocol" optional string multiple
+
+option "outputtype"     o "Type of output" values="ByteCounter","ByteStorage","FrameCounter","FrameStorage","RingBuffer"
+
+section "ring-params" sectiondesc="These options are required and may only be used for --outputtype=RingBuffer\n\n"
+
+
+
+option "ring" r  "Ring buffer into which the data will be inserted (created if necessary)"
+option "id"   s  "Source id of data inserted into the ring buffer."
+option "timestamp" t "Determines what is put in the timestamp" values="timestamp","trigger_number" optional default="timestamp"
+

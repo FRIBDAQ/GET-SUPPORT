@@ -32,19 +32,7 @@
  * =====================================================================================================================
  */
 
-/**
- *  Modification begun by the NSCL/FRIB on September 19, 2018.
- *  Modification intent is to support command line processing that:
- *   -   Allows the user to select a ring buffer into which the data are disposed.
- *   -   Supports selecting the output ring for that outputter.
- *   -   Provides for the selection of either the event number or the
- *       timestamp from the frame as the timestamp in the data item.
- *   -   Provides for the selection of the source id if ring buffers are used.
- *
- * @note the actual form of the data router command line may be modified
- *       as it may be switching this all to use gengetopt is the best
- *       way to get the needed flexibility.
- */
+
 
 #include "DataRouter.h"
 #include "mdaq/daq/IceDataReceiver.h"
