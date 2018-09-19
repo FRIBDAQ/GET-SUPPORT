@@ -12,7 +12,8 @@
  * software modules for the MDaq framework.
  * ---------------------------------------------------------------------------------------------------------------------
  * FREE SOFTWARE LICENCING
- * This software is governed by the CeCILL license under French law and abiding  * by the rules of distribution of free
+ * This software is governed by the CeCILL license under French law and abiding
+ * * by the rules of distribution of free
  * software. You can use, modify and/or redistribute the software under the terms of the CeCILL license as circulated by
  * CEA, CNRS and INRIA at the following URL: "http://www.cecill.info". As a counterpart to the access to the source code
  * and rights to copy, modify and redistribute granted by the license, users are provided only with a limited warranty
@@ -29,6 +30,20 @@
  * You can obtain this software from CEA under other licensing terms for commercial purposes. For this you will need to
  * negotiate a specific contract with a legal representative of CEA.
  * =====================================================================================================================
+ */
+
+/**
+ *  Modification begun by the NSCL/FRIB on September 19, 2018.
+ *  Modification intent is to support command line processing that:
+ *   -   Allows the user to select a ring buffer into which the data are disposed.
+ *   -   Supports selecting the output ring for that outputter.
+ *   -   Provides for the selection of either the event number or the
+ *       timestamp from the frame as the timestamp in the data item.
+ *   -   Provides for the selection of the source id if ring buffers are used.
+ *
+ * @note the actual form of the data router command line may be modified
+ *       as it may be switching this all to use gengetopt is the best
+ *       way to get the needed flexibility.
  */
 
 #include "DataRouter.h"
