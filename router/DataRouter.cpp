@@ -32,6 +32,12 @@
  * =====================================================================================================================
  */
 
+/**
+ * Contribution/modification begun at NSCL/FRIB september 19, 2018
+ * Modifications are intended to support
+ *  -  building external to GET source tree.
+ *  -  NSCLDAQ ringbuffer outputter.
+ */
 
 
 #include "DataRouter.h"
@@ -40,10 +46,10 @@
 #include "get/daq/FdtDataReceiver.h"
 #ifndef __APPLE__
 #include "mdaq/daq/NetPerfProcessor.h"
-#include "FrameCounter.h"
+#include "get/daq/FrameCounter.h"
 #endif
-#include "FrameStorage.h"
-#include "ByteStorage.h"
+#include "get/daq/FrameStorage.h"
+#include "get/daq/ByteStorage.h"
 #include "utl/Logging.h"
 #include <boost/algorithm/string.hpp>
 namespace ba = boost::algorithm;

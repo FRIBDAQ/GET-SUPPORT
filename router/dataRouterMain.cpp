@@ -68,6 +68,8 @@ namespace ba = boost::algorithm;
 #include <iostream>
 #include <sstream>
 
+#include "datarouterargs.h" 
+
 using ::utl::net::SocketAddress;
 using ::mdaq::utl::CmdLineArgs;
 using ::mdaq::utl::Server;
@@ -75,6 +77,10 @@ using ::get::daq::DataRouter;
 
 int main(int argc, char* argv[])
 {
+	gengetopt_args_info parsed;
+	cmdline_parser(argc, argv, &parsed);
+	
+	
 	// Setup logging backend
 	::utl::BackendLogger::setBackend(::utl::LoggingBackendPtr(new ::mdaq::utl::ConsoleLoggingBackend));
 
