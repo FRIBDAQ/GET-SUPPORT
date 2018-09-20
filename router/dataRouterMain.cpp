@@ -84,44 +84,52 @@ int main(int argc, char* argv[])
 	// Setup logging backend
 	::utl::BackendLogger::setBackend(::utl::LoggingBackendPtr(new ::mdaq::utl::ConsoleLoggingBackend));
 
-	std::ostringstream usage;
-	usage << "Usage: " << argv[0] << " <[ctrl-ipAddr]:[port]>  <[data-ipAddr]:[port]> [ICE|TCP|FDT] [ByteCounter|ByteStorage|FrameCounter|FrameStorage] [Ice arguments]";
 	try
 	{
-		CmdLineArgs args = CmdLineArgs::build(argc, argv);
+		std::vector<std::string> args;             // For the ICE args.
 
-		if (args.size() > 1 and (args [1] == "-h" or args[1] == "--help")) throw usage.str();
-
-		// Setting control endpoint
+		// Setting control endpoint.  This comes from
+		// --controlservice_arg
+		
 		SocketAddress ctrlEndpoint;
-		if (args.size() > 1) ctrlEndpoint.fromString(args[1]);
+		if (parsed.controlservice_given) ctrlEndpoint.fromString(parsed.controlservice_arg);
 		if (ctrlEndpoint.port() == 0) ctrlEndpoint.port() = ::mdaq::Default::dataRouterCtrlPortNum;
 		if (not ctrlEndpoint.isValid()) ctrlEndpoint.ipAddress().in_addr() = INADDR_ANY;
 
 		// Setting data flow endpoint (ip address will be same as control if not defined)
+		// This comes from dataservice_arg if supplied.
+		
 		SocketAddress flowEndpoint;
-		if (args.size() > 2) flowEndpoint.fromString(args[2]);
+		if (parsed.dataservice_given) flowEndpoint.fromString(parsed.dataservice_arg);
 		if (flowEndpoint.port() == 0) flowEndpoint.port() = ::mdaq::Default::dataRouterFlowPortNum;
 		if (not flowEndpoint.isValid()) flowEndpoint.ipAddress().in_addr() = ctrlEndpoint.ipAddress().in_addr();
 
-		// Setting data flow type
-		std::string flowType = args.size() > 3 ? args[3] : "TCP";
+		// Setting data flow type.  This comes from protocol_arg.
+		std::string flowType = parsed.protocol_arg;             // gengetopt handles default.
 		ba::to_upper(flowType);
 
-		// Setting data processor type
-		const std::string processorType = args.size() > 4 ? args[4] : "FrameStorage";
+		// Setting data processor type - from outputtype
+		
+		const std::string processorType = parsed.outputtype_arg;
+		
 
 		// Load frame formats
 		if ("FrameStorage" == processorType)
 		{
 			mfm::FrameDictionary::instance().addFormats("CoboFormats.xcfg");
+		} else if (processorType == "RingBuffer") {
+			mfm::FrameDictionary::instance().addFormats("CoboFormats.xcfg");  // We'll also need to assemble/decode frames.
+			
+			// process ring buffer types.
 		}
 
 		// Disable IPv6 support
 		// With Ice 3.5, support for IPv6 is enabled by default.
 		// On sedipcg212 (Ubuntu 14.04), it causes "Address family is not supported by protocol" socket exceptions when using wildcard address.
 		args.push_back("--Ice.IPv6=0");
-
+		for (int i  = 0; i < parsed.icearg_given; i++) {
+			args.push_back(parsed.icearg_arg[i]);
+		}
 		// Creating data router servant
 		Server& server = Server::create(ctrlEndpoint, args);
 		server.ic(); // Hack to ensure ICE communicator is initialized with desired arguments
