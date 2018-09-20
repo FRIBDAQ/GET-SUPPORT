@@ -98,6 +98,8 @@ DataRouter::DataRouter(const ::utl::net::SocketAddress& flowEndpoint, const std:
 	{
 		dataProcessor.reset(new FrameStorage());
 		dataReceiver->set_dataProcessorCore(dataProcessor);
+	} else if (dataProcessorType == "RingBuffer")
+		// Insert new data processor here.
 	}
 	else
 	{
