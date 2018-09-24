@@ -52,6 +52,9 @@
 #include "get/daq/ByteStorage.h"
 #include "utl/Logging.h"
 #include <boost/algorithm/string.hpp>
+
+#include "NSCLDAQDataProcessor.h"
+
 namespace ba = boost::algorithm;
 
 using ::utl::net::SocketAddress;
@@ -99,7 +102,9 @@ DataRouter::DataRouter(const ::utl::net::SocketAddress& flowEndpoint, const std:
 		dataProcessor.reset(new FrameStorage());
 		dataReceiver->set_dataProcessorCore(dataProcessor);
 	} else if (dataProcessorType == "RingBuffer")
-		// Insert new data processor here.
+	{
+		dataProcessor.reset(new NSCLDAQDataProcessor());
+		dataReceiver->set_dataProcessorCore(dataProcessor);
 	}
 	else
 	{

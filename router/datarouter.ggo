@@ -17,8 +17,8 @@ option "outputtype"     o "Type of output" values="ByteCounter","ByteStorage","F
 section "ring-params" sectiondesc="These options are required and may only be used for --outputtype=RingBuffer\n\n"
 
 
-option "ring" r  "Ring buffer into which the data will be inserted (created if necessary)"
-option "id"   s  "Source id of data inserted into the ring buffer."
+option "ring" r  "Ring buffer into which the data will be inserted (created if necessary)" string optional default=""
+option "id"   s  "Source id of data inserted into the ring buffer." optional int default="0"
 option "timestamp" t "Determines what is put in the timestamp" values="timestamp","trigger_number" optional default="timestamp"
 option "run"       R "Run Number with which to tag state transition items." int optional default="0"
 option "title"     T "Title with which to tag state transition items."      string optional default="Title was not set"

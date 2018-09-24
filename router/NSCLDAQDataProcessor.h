@@ -23,9 +23,10 @@
 
 #include <get/daq/FrameStorage.h>
 #include <string>
+
 #include <memory>
 
-class RingBuffer;
+class CRingBuffer;
 
 /**
  * @class NSCLDAQDataprocessor
@@ -39,13 +40,13 @@ class RingBuffer;
  *     receive and assemble it into frames.
  */
 
-class NSCLDAQDataProcessor : public FrameStorage
+class NSCLDAQDataProcessor : public get::daq::FrameStorage
 {
 public:
     // Canonicals
     
-    NSCLDataProcessor();
-    virtual ~NSCLDataprocessor();
+    NSCLDAQDataProcessor();
+    virtual ~NSCLDAQDataProcessor();
 
     // overrides from FrameStorage:
     
@@ -64,11 +65,16 @@ public:
     
     // Forbidden canonicals:
 private:
-    NSCLDataProcessor(const NSCLDataProcessor& r);
-    NSCLDataProcessor& operator=(const NSCLDataProcessor& r);
+    NSCLDAQDataProcessor(const NSCLDAQDataProcessor& r);
+    NSCLDAQDataProcessor& operator=(const NSCLDAQDataProcessor& r);
+
+    // Utility methods:
+
+private:
+    size_t sizeFrame(const mfm::Frame& frame);
     
     // Object data:
-
+    
 private:
     std::string   m_ringName;
     std::unique_ptr<CRingBuffer>   m_RingBuffer;

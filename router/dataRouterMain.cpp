@@ -57,7 +57,7 @@
 #include "mdaq/utl/CmdLineArgs.h"
 #include "mdaq/utl/Server.h"
 #include "mdaq/utl/ConsoleLoggingBackend.h"
-#include "get/daq/DataRouter.h"
+#include "DataRouter.h"
 #include "mfm/FrameDictionary.h"
 #include "utl/Logging.h"
 
@@ -67,8 +67,9 @@ namespace ba = boost::algorithm;
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
-
-#include "datarouterargs.h" 
+#include <CRingBuffer.h>
+#include "datarouterargs.h"
+#include "NSCLDAQDataProcessor.h"
 
 using ::utl::net::SocketAddress;
 using ::mdaq::utl::CmdLineArgs;
@@ -113,6 +114,10 @@ int main(int argc, char* argv[])
 		const std::string processorType = parsed.outputtype_arg;
 		
 
+		/** TODO: Pull in CoboFormats from the installation dir instead of
+		 *        wd.
+		 */
+		
 		// Load frame formats
 		if ("FrameStorage" == processorType)
 		{
@@ -133,7 +138,37 @@ int main(int argc, char* argv[])
 		// Creating data router servant
 		Server& server = Server::create(ctrlEndpoint, args);
 		server.ic(); // Hack to ensure ICE communicator is initialized with desired arguments
-		IceUtil::Handle< DataRouter > dataRouter(new DataRouter(flowEndpoint, flowType, processorType));
+		DataRouter* r = new DataRouter(flowEndpoint, flowType, processorType);
+		IceUtil::Handle< DataRouter > dataRouter(r);
+		
+		// If the data router was for a "RingBuffer", we need to set the
+		// ringbuffer name, source id and how the timestamp comes about.
+		
+		if (processorType == "RingBuffer") {
+			NSCLDAQDataProcessor& proc(
+				dynamic_cast<NSCLDAQDataProcessor&>(r->getDataReceiver()->dataProcessorCore())
+			);
+			proc.setSourceId(parsed.id_arg);
+			
+			// Figure out timestamp source:
+			
+			std::string tsSource = parsed.timestamp_arg;
+			if(tsSource == "timestamp") {
+				proc.useTimestamp();
+			} else if (tsSource == "trigger_number") {
+				proc.useTriggerId();
+ 			} else {
+				throw "--timestamp value must be either 'timestamp' or 'trigger_number'";
+			}
+            // Figure out the ring buffer name.. if not provided, use the
+			// default name
+			
+			std::string ringName = CRingBuffer::defaultRing();
+			if (parsed.ring_given) ringName = parsed.ring_arg;
+			proc.setRingBufferName(ringName);
+			
+		}
+		
 		server.addServant("DataRouter", dataRouter).start();
 		dataRouter->runStart();
 		server.waitForStop();

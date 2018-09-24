@@ -31,6 +31,12 @@
  * =====================================================================================================================
  */
 
+/**
+ * Contriubution : Modified by FRIB/NSCL to add support for interfacing with
+ *                 nscldaq. - Specifically we need a way to get the ring buffer
+ *                 and ring item fixed parameters into the NSCLDAQDataProcessor.
+ *                 Globals are too ugly for that.
+ */
 #ifndef get_daq_DataRouter_h_INCLUDED
 #define get_daq_DataRouter_h_INCLUDED
 
@@ -62,7 +68,11 @@ public:
     void runConfig(const std::string& configString, const ::Ice::Current& = ::Ice::Current());
     void runStart(const ::Ice::Current& = ::Ice::Current());
     void runStop(const ::Ice::Current& = ::Ice::Current());
-
+    /*
+     Allows the parent to get and manipulate the data processor by
+     getting the data processor core.
+    */
+    mdaq::daq::DataReceiver* getDataReceiver() { return dataReceiver.get(); }
 private:
 	DataRouter(DataRouter const & r);
 	DataRouter& operator=(const DataRouter & r);
