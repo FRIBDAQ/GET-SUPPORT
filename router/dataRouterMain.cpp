@@ -121,9 +121,11 @@ int main(int argc, char* argv[])
 		// Load frame formats
 		if ("FrameStorage" == processorType)
 		{
-			mfm::FrameDictionary::instance().addFormats("CoboFormats.xcfg");
+		  //mfm::FrameDictionary::instance().addFormats("CoboFormats.xcfg");
+		  mfm::FrameDictionary::instance().addFormats(COBO_FORMAT_FILE);
 		} else if (processorType == "RingBuffer") {
-			mfm::FrameDictionary::instance().addFormats("CoboFormats.xcfg");  // We'll also need to assemble/decode frames.
+		  //	mfm::FrameDictionary::instance().addFormats("CoboFormats.xcfg");  // We'll also need to assemble/decode frames.
+		  mfm::FrameDictionary::instance().addFormats(COBO_FORMAT_FILE);  // We'll also need to assemble/decode frames.
 			
 			// process ring buffer types.
 		}
