@@ -32,7 +32,7 @@
  * =====================================================================================================================
  */
 
-#include "get/EccClient.h"
+#include "EccClient.h"
 #include <CCfg/CConfig.h>
 #include <CCfg/Io/BufferStorage.h>
 #include <CCfg/Io/Document.h>
