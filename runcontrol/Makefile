@@ -17,12 +17,15 @@ LDFLAGS=-L$(GET)/lib \
 	-pthread		\
 	-Wl,-rpath=$(GET)/libs $(ICE_LIBS) -g
 
-all: daqstart
+all: daqstart daqstop
 
 
 daqstart: daqstart.o EccClient.o
 	$(CXX) -o daqstart daqstart.o EccClient.o $(LDFLAGS)
 
+
+daqstop: daqstop.o EccClient.o
+	$(CXX) -o daqstop daqstop.o EccClient.o $(LDFLAGS)
 
 
 clean:
