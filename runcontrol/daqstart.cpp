@@ -29,10 +29,12 @@
 /**
  *  This program starts a run with the GET electronics.
  *  Usage is:
- *    daqstart hwnode eccserver routerdata
+ *    daqstart hwnode eccserver routerdata coboip
  *
  *  Where:
- *     hwnode - is the hardware node we're going to start (e.g. CoBo[0]).
+ *     hwnode - is the hardware node control port we're going to connect.
+ *              this is the ip of the COBO and the port 46001 e.g.
+ *
  *     eccserver is the IP/Service on which getEccServer is listening for a connection.
  *         Normaly, this is getspdaqIP:46002
  *    routerdata is the IP/Service on which the nscldatarouter is expecting data.  Normally this is
@@ -47,7 +49,21 @@
  *   -  connect the router.
  *   -  start the run.
  */
+static void
+usage(std::ostream& o)
+{
+  o << "Usage: \n";
+  o << "    daqstart hwnode eccserver routerdata\n";
+  o << "Where:\n";
+  o << "   hwnode - The IP:port of the Cobo to be started e.g.\n";
+  o << "            10.50.100.2:46001\n";
+  o << "   eccserver - Is the node:port the ECC server for that crate.  The port\n";
+  o << "            is typically 46002 e.g. 10.50.200.2:46002\n";
+  o << "  routerdata - is the node:port of the router data port typically the port\n";
+  o << "            is 46005 e.g 10.50.200.2:46005\n";
+  exit(EXIT_FAILURE);
 
+}
 /**
  *  Entry point
  */
@@ -66,11 +82,11 @@ main(int argc, char** argv)
 
   // Make the EccClient:
 
-  EccClient client(eccServr, "BeginRun");
+  EccClient client(eccServer, "BeginRun");
 
   // Connect to our hardware
 
-  client.ecc().selectNodeById(cobo);
+  client.connectNode(cobo);
   
   // Disconnect/connect the router.
 
@@ -83,7 +99,7 @@ main(int argc, char** argv)
   
   // start taking data.
 
-  client.daqctrl(true, true);     // Start run with timestamp reset.
+  client.daqCtrl(true, true);     // Start run with timestamp reset.
 
   exit(EXIT_SUCCESS);
 }
