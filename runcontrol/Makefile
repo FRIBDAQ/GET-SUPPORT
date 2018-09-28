@@ -15,7 +15,7 @@ LDFLAGS=-L$(GET)/lib \
 	-lgetbench-eccclient -lmdaq-utl -lmdaq-interfaces -lUtilities \
 	-lCompoundConfig   \
 	-pthread		\
-	-Wl,-rpath=$(GET)/libs $(ICE_LIBS) -g
+	-Wl,-rpath=$(GET)/lib $(ICE_LIBS) -g
 
 all: daqstart daqstop
 
