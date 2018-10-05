@@ -37,8 +37,7 @@
  *
  *     eccserver is the IP/Service on which getEccServer is listening for a connection.
  *         Normaly, this is getspdaqIP:46002
- *    routerdata is the IP/Service on which the nscldatarouter is expecting data.  Normally this is
- *             getspdaqIP:46005
+
  * Assumptions:
  *   Prior to running this, GetController must have selected a configuration (Test) and
  *   loaded/configured the hardware.
@@ -59,8 +58,6 @@ usage(std::ostream& o)
   o << "            10.50.100.2:46001\n";
   o << "   eccserver - Is the node:port the ECC server for that crate.  The port\n";
   o << "            is typically 46002 e.g. 10.50.200.2:46002\n";
-  o << "  routerdata - is the node:port of the router data port typically the port\n";
-  o << "            is 46005 e.g 10.50.200.2:46005\n";
   exit(EXIT_FAILURE);
 
 }
@@ -73,33 +70,28 @@ main(int argc, char** argv)
 {
   // Ensure we have the right number of parameters; then stringify them:
 
-  if (argc != 4) {
+  if (argc != 3) {
     usage(std::cerr);
   }
   std::string cobo       = argv[1];
   std::string eccServer  = argv[2];
-  std::string dataRouter = argv[3];
 
   // Make the EccClient:
 
-  EccClient client(eccServer, "BeginRun");
+  EccClient client(eccServer);
 
   // Connect to our hardware
 
   client.connectNode(cobo);
   
-  // Disconnect/connect the router.
 
-  try {
-    client.daqDisconnect();
-  }
-  catch (...) {}                   // assume errors mean already disconnected.
-
-  client.daqConnect(dataRouter, std::string("TCP"));
-  
   // start taking data.
 
   client.daqCtrl(true, true);     // Start run with timestamp reset.
 
+  // @todo must do this conditionally - only if a pulser run.
+  
+  client.ecc()->startAsAdPeriodicPulser(); // Start the asad pulser
+  
   exit(EXIT_SUCCESS);
 }

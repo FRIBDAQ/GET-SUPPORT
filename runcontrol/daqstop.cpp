@@ -118,7 +118,7 @@ main(int argc, char** argv)
 {
   // Ensure we have the right number of parameters; then stringify them:
 
-  if (argc != 4) {
+  if (argc != 3) {
     usage(std::cerr);
   }
   std::string cobo       = argv[1];
@@ -126,24 +126,20 @@ main(int argc, char** argv)
 
   // Make the EccClient:
 
-  EccClient client(eccServer, "EndRun");
+  EccClient client(eccServer);
 
   // Connect to our hardware
 
   client.connectNode(cobo);
   
+  // @todo - this should be conditional -- only on a pusler run:
 
+  client.ecc()->stopAsAdPeriodicPulser();
   
-  // start taking data.
+  // stop taking data.
+
 
   client.daqCtrl(false);     // Start run with timestamp reset.
-
-  // Disconnect/connect the router.
-
-  try {
-    client.daqDisconnect();
-  }
-  catch (...) {}                   // assume errors mean already disconnected.
   
   exit(EXIT_SUCCESS);
 }
