@@ -1,0 +1,8 @@
+package "ringmerge"
+version "1.0"
+
+text "Merges data from serveral input rings to a single output ring.  One use for this \
+is to wrap begin/end run markers around runs from devices that don't normally produce them"
+
+option "output" o "Ringbuffer name to get the merged data" string
+option "input" i "URL Of ring buffers from which data are taken." string multiple
