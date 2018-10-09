@@ -11,6 +11,11 @@ ICE_CPPFLAGS = -DICEUTIL_HEADER\(header\)="<IceUtil/header>" -DICE_EDITION=Ice -
 ICE_EDITION = Ice
 ICE_LIBS = -lIce -lIceUtil
 
+CXXFLAGS=$(NSCLDAQ_CXXFLAGS)
+CXXLDFLAGS=$(NSCLDAQ_LDFLAGS)
+
+ringmerge: ringMergeMain.o ringmerge.o
+	$(CXX) -o ringmerge ringMergeMain.o ringmerge.o $(CXXLDFLAGS)
 
 ringmerge.o: ringmerge.ggo
 	gengetopt <ringmerge.ggo -Fringmerge

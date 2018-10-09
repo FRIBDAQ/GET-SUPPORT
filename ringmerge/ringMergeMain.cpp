@@ -54,8 +54,8 @@ int main(int argc, char** argv)
     
     try {
         if (parsedArgs.input_given > 0) {
-            for (int i =0; i < input_given; i++) {
-                ringName = ring_arg[i];
+            for (int i =0; i < parsedArgs.input_given; i++) {
+                ringName = parsedArgs.input_arg[i];
                 inputRings.push_back(CRingAccess::daqConsumeFrom(ringName));
             }
         } else {
@@ -65,55 +65,55 @@ int main(int argc, char** argv)
     catch (std::exception& e)  {
         std::cerr << "Unable to attach to ring as consumer " << ringName << " : "
             << e.what() << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (CException& e) {
         std::cerr << "Unable to attach to ring as consumer " << ringName << " :  "
             << e.ReasonText() << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (std::string& msg) {
         std::cerr << msg << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (const char* msg) {
         std::cerr << msg << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (...) {
         std::cerr << "Unexpected exception type processing input rings\n";
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     // Make the output ring buffer:
     
 
     try {
-        ringName = output_given;
-        ouptputRing = CRingBuffer::createAndProduce(ringName, RING_BUFFER_SIZE);
+        ringName = parsedArgs.output_given;
+        outputRing = CRingBuffer::createAndProduce(ringName, RING_BUFFER_SIZE);
     }
     catch (std::exception& e)  {
         std::cerr << "Unable to attach to ring as producer " << ringName << " : "
             << e.what() << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (CException& e) {
         std::cerr << "Unable to attach to ring as producer " << ringName << " :  "
             << e.ReasonText() << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (std::string& msg) {
         std::cerr << "Unable to attach to ring as producer " << ringName << " :  "
             << msg << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (const char* msg) {
         std::cerr << "Unable to attach to ring as producer " << ringName << " :  "
             << msg << std::endl;
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
     catch (...) {
         std::cerr << "Unexpected exception type processing output ring\n";
-        exit(EXIT_FALURE);
+        exit(EXIT_FAILURE);
     }
 
     //  Now we can forward data as we get it from the input ring buffers
