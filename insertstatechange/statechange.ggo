@@ -1,15 +1,16 @@
+
 package "insertstatechange"
 version "1.0"
 
-text "Inserts a state change item into a ring buffer.  There must not be a
-producer to the ring when invoked"
+text "\nInserts a state change item into a ring buffer.  There must not be a producer to the ring when invoked\n"
+
 
 option "ring" r "Ring buffer in which the state change item is inserted" string
-option "run"  R "Run number of the state change item"
-option "title" t "Run title to use"
-option "source-id" s "Source id to put in the ring item's body header"
+option "run"  R "Run number of the state change item" int
+option "title" t "Run title to use" string
+option "source-id" s "Source id to put in the ring item's body header" int
 option "type" T "Type of state change item" values="begin","end"
+option "offset" o "Run offset (only legal for end runs)" optional int default="0xffffffff"
 
-text "Note - its' not possible to know the actual run offset for end of run \
-items.  Begin runs will be inserted with a time  offset of 0 while end run items \
-will be given a timestamp of 0xffffffff."
+text "Note -  Begin runs will be inserted with a time  offset of 0 while end run items will be given a timestamp of 0xffffffff if not explicitly supplied"
+
