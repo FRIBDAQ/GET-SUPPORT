@@ -6,3 +6,5 @@ is to wrap begin/end run markers around runs from devices that don't normally pr
 
 option "output" o "Ringbuffer name to get the merged data" string
 option "input" i "URL Of ring buffers from which data are taken." string multiple
+
+text "Note --input (-i) can be specified an arbitrary number of times"

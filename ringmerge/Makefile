@@ -11,12 +11,33 @@ ICE_CPPFLAGS = -DICEUTIL_HEADER\(header\)="<IceUtil/header>" -DICE_EDITION=Ice -
 ICE_EDITION = Ice
 ICE_LIBS = -lIce -lIceUtil
 
-CXXFLAGS=$(NSCLDAQ_CXXFLAGS)
+CXXFLAGS=$(NSCLDAQ_CXXFLAGS) -std=c++11
 CXXLDFLAGS=$(NSCLDAQ_LDFLAGS)
 
-ringmerge: ringMergeMain.o ringmerge.o
+CPPUNITLDFLAGS=-lcppunit
+
+ringmerge: ringmerge.o  ringMergeMain.o 
 	$(CXX) -o ringmerge ringMergeMain.o ringmerge.o $(CXXLDFLAGS)
+
+
+ringMergeMain.o: ringMergeMain.cpp ringmerge.h
 
 ringmerge.o: ringmerge.ggo
 	gengetopt <ringmerge.ggo -Fringmerge
 	$(CC) -c ringmerge.c
+
+ringmerge.h: ringmerge.ggo
+	gengetopt <ringmerge.ggo -Fringmerge
+
+all: ringmerge tests
+
+clean:
+	rm -f *.o ringmerge.h ringmerge.h ringmerge.c ringmerge
+	rm -f unittests
+
+
+tests: unittests ringmerge
+	./unittests
+
+unittests: TestRunner.o mergetests.o
+	$(CXX) -o unittests TestRunner.o mergetests.o $(CXXLDFLAGS) $(CPPUNITLDFLAGS)

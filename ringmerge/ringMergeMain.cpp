@@ -88,7 +88,7 @@ int main(int argc, char** argv)
     
 
     try {
-        ringName = parsedArgs.output_given;
+        ringName = parsedArgs.output_arg;
         outputRing = CRingBuffer::createAndProduce(ringName, RING_BUFFER_SIZE);
     }
     catch (std::exception& e)  {
