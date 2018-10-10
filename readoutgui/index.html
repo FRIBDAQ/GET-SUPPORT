@@ -1,0 +1,78 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+    <title><!-- Get data source parameter help --></title>
+</head>
+<body>
+    <h1>GET Data source parameter help</h1>
+    
+    <h2>Host parameters</h2>
+    <p>
+        GET electronics requires an spdaq with a private subnet.  The private
+        subnet connects to the GET micro-TCA crate.  This means that this
+        spdaq has a pair of IP addresses, one which presents itself to the
+        global data acquisition network (this IP is associated with an spdaq name
+        e.g. spdaq08) and an IP address on that private subnet.
+    </p>
+    <p>
+        The assumption, when starting is that the getEccServer is running,
+        and that GetController will set up the connection between data
+        received from a specific CoBo to the specified data router.
+    </p>
+    <p>
+        Therefore the following host parameters are needed:
+    </p>
+    <ul>
+        <li>
+            <p><b>spdaq</b> - The DNS name of the GET spdaq on the daq network.</p>
+        </li>
+        <li>
+            <p><b>getIP</b> - The private IP of the spdaq on the GET netework.</p>
+        </li>
+    </ul>
+    <h2>Ring buffer parameters.</h2>
+    <p>
+        GET electronics does not output start/stop items.  Therefore, three
+        ringbuffers are used:
+    </p>
+    <ul>
+        <li>
+            <p>
+                <b>data-ring</b> - The data router inserts data from the GET electronics
+                into this ring
+            </p>
+        </li>
+        <li>
+            <p>
+                <b>transition-ring</b> - The data router inserts BEGIN_RUN and
+                END_RUN state transition items into this ring.
+            </p>
+        </li>
+        <li>
+            <p>
+                <b>output-ring</b> - data from transition-ring and data-ring are merged
+                into this output-ring and this is the ring from which
+                data should be consumed by NSCLDAQ bits and pieces.
+            </p>
+        </li>
+    </ul>
+    <h2>Miscellaneous parameters</h2>
+    <ul>
+        <li>
+            <p>
+                <b>tssource</b>  Since we are not sure if we can do make GET
+                synchronize its timestamp and/or clock with an external source,
+                the system has the option of filling in event timestamps either from
+                the GET timestamp or the GET trigger id (event number).
+            </p>
+        </li>
+        <li>
+            <p>
+                <b>source-id</b> provides the source id in body headers emitted by
+                the system.
+            </p>
+        </li>
+    </ul>
+</body>
+</html>
