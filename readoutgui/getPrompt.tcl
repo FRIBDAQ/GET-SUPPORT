@@ -28,9 +28,38 @@ package provide GET_Prompter 1.0
 package require Tk
 package require snit
 
+package require DataSourceUI
+package require Iwidgets
 
-namespace eval GET {}
+namespace eval GET {
+    variable installedIn  [file dirname [info script]];  #Helpdir too.
+    #
+    #  This defines the set of configurable parameters for get data sources.
+    #  It's a template of the dict that will be used to initialize/parameterize
+    #  the source.  Keys are parameter names, values are a list containing
+    #  the meaning of the parameter that is assigned to that key
+    #
+    variable parameterization [dict create \
+        spdaq [list {Host that is connected to GET uTCA crate}] \
+        privateip [list {IP address of the spdaq host on the uTCA private subnet}] \
+        dataservice [list {Service on which the data router listens for event connections}] \
+        datauri     [list {URI of ring into which GET frames are put as ring items}] \
+        stateuri    [list {URI of ring into which run state change items are put}] \
+        outputring  [list {Ring name into which datauri and stateuri items are merged}] \
+        timestampsource [list {Identifies what's put in to the timestamp of GET ring items}] \
+        sourceid    [list {Source Id put into body headers for this source}]   \
+    ]
+    #
+    #  This provides a lookup table between the keys above and option names in
+    #  the combined prompter widget
+    #
 
+}
+array set ::GET::optionlookup [list                                      \
+    spdaq -spdaq privateip -privateip dataservice -datasvc               \
+    datauri -datauri stateuri -stateuri outputring -outputring           \
+    timestampsource -timestampsource sourceid -sourceid                   \
+]
 ##
 #   GET parameters are into three parts divided:
 #     * host parameters - IP addresses and DNSnames along with service ports.
@@ -49,7 +78,7 @@ namespace eval GET {}
 #   -   Data service (defaults to 46005)
 #
 
-snit::widgetadaptor GET::HostPrompts {
+snit::widgetadaptor ::GET::HostPrompts {
     option -spdaq     -default localhost 
     option -privateip -default 0.0.0.0 \
         -cgetmethod _getPrivateIp -configuremethod _setPrivateIp
@@ -170,7 +199,7 @@ snit::widgetadaptor GET::HostPrompts {
 #    The two input rings must be URLs while the output rings need not be.
 #
 #
-snit::widgetadaptor GET::RingPrompts {
+snit::widgetadaptor ::GET::RingPrompts {
     option -datauri     -default tcp://localhost/data  -configuremethod _setUri
     option -stateuri    -default tcp://localhost/state -configuremethod _setUri
     option -outputring  -default GET
@@ -271,3 +300,193 @@ snit::widgetadaptor GET::RingPrompts {
         return 1
     }
 }
+##
+# GET::MiscellaneousPrompts
+#
+#   Prompts for:
+#      - Timestamp source (one of timestamp or trigger-id)
+#      - soruce-id   The source id to put into ring items.
+#
+#
+snit::widgetadaptor  ::GET::MiscellaneousPrompts {
+    option -timestampsource -default timestamp -configuremethod _setTimestampSource
+    option -sourceid        -default 0 \
+        -configuremethod _setSourceId -cgetmethod _getSourceId
+    
+    constructor args {
+        installhull using ttk::frame
+        
+        ttk::label $win.tslabel -text {Timestamp source:}
+        ttk::combobox $win.ts   \
+            -state readonly -values [list timestamp trigger_number] \
+            -textvariable [myvar options(-timestampsource)]
+        
+        ttk::label $win.sidlabel -text {Source Id:}
+        ttk::spinbox $win.sid    -state readonly -from 0 -to 10000 -increment 1
+        $win.sid set $options(-sourceid)
+        
+        grid $win.tslabel $win.ts    -sticky w
+        grid $win.sidlabel $win.sid  -sticky w
+        
+        $self configurelist $args
+    }
+    #--------------------------------------------------------------------------
+    # Private methods:
+    
+    ##
+    # _setTimestampSource
+    #     Validates a new timestamp source before setting it in the option.
+    #     the timestamp source must be one the elments inthe
+    #     -values list of $win.ts
+    #
+    # @param optname - name of the option controlled.
+    # @param value   - proposed new value
+    #
+    method _setTimestampSource {optname value} {
+        set validValues [$win.ts cget -values]
+        if {$value ni $validValues} {
+            error "$value is not a valid value for $optname must be one of [join $validValues]"
+        }
+        set options($optname) $value
+    }
+    ##
+    # _setSourceId
+    #   There's no way to bind a variable to a spinbox so we use this
+    #   to catch configuring the option.  This allows us also to validate
+    #   that the option is a non-negative integer as well.
+    #
+    # @param optname - name of the configuration option bound to the spinbox
+    # @param value   - value proposed for the option.
+    #
+    method _setSourceId        {optname value} {
+        if {[string is integer -strict $value]} {
+            if {$value >= 0} {
+                $win.sid set $value
+            }
+        }
+        error "$optname value must be a non-negative integer was: $value"
+    }
+    ##
+    # _getSourceId
+    #
+    # @return integer - the contents of the source id spinbox.
+    #
+    method _getSourceId        {optname} {
+        return [$win.sid get]
+    }
+}
+
+##
+# GET::PromptForm
+#    This megawidget is the complete prompt form.  Each of the
+#    prompt forms above is pasted into a ttk::labelframe.
+#    The options of all of the forms are exported via delegation by this
+#    megawidget.
+#
+snit::widgetadaptor ::GET::GetPromptForm {
+    
+    # A component for each sub form.
+    
+    component networkParameters
+    component ringParameters
+    component miscParameters
+    
+    # Make the network parameter options visible:
+    
+    delegate option -spdaq     to networkParameters
+    delegate option -privateip to networkParameters
+    delegate option -datasvc   to networkParameters
+    
+    # Make the ring buffer parameter options visible:
+    
+    delegate option -datauri    to ringParameters
+    delegate option -stateuri   to ringParameters
+    delegate option -outputring to ringParameters
+    
+    # Make the miscellaneous options visible:
+    
+    delegate option -timestampsource to miscParameters
+    delegate option -sourceid        to miscParameters
+ 
+    constructor args {
+        installhull using ttk::frame
+        
+        ttk::labelframe $win.net  -text {Network parameters}
+        ttk::labelframe $win.ring -text {Ringbuffer Parameters}
+        ttk::labelframe $win.misc -text {Miscellaneous parameters}
+        
+        install networkParameters using ::GET::HostPrompts $win.net.form
+        install ringParameters    using ::GET::RingPrompts $win.ring.form
+        install miscParameters    using ::GET::MiscellaneousPrompts $win.misc.form
+        
+        grid $win.net.form  -sticky w
+        grid $win.ring.form -sticky w
+        grid $win.misc.form -sticky w
+        
+        grid $win.net   -sticky ew
+        grid $win.ring  -sticky ew
+        grid $win.misc -sticky ew
+    }
+}
+
+#------------------------------------------------------------------------------
+#
+#   Procs that drive the prompting from the ReadoutGUI point of view:
+#
+
+
+##
+# GET::showHelp
+#   Displays the help in an iwidgets help widget.
+#
+proc ::GET::showHelp {} {
+    if {[winfo exists .gethelp] eq ""} {
+        iwidgets::hyperhelp .gethelp \
+            -topics index -helpdir $::GET::installedIn
+        
+    }
+    
+    .gethelp showtopic index
+    .gethelp activate
+}
+
+##
+#  Called by the ReadoutGUI to prompt for parameters for the GET
+#  readout:
+#
+#  @return dict keys are data source parameter names and values are
+#          three elements lists containing in order 
+#          long prompt, dummy widget name and parameter value
+#
+proc GET::promptParameters {} {
+    toplevel .getparamtoplevel
+    set dlg [DialogWrapper .getparamtoplevel.dialog]
+    set container [$dlg controlarea]
+    
+    set form [GET::GetPromptForm $container.f]
+    $dlg configure -form $form
+    pack $dlg -fill both -expand 1
+    
+    button .getparamtoplevel.help -text Help -command ::GET::showHelp
+    pack .getparamtoplevel.help
+    
+    set result [$dlg modal]
+    set paramdict [dict create]
+    if {$result eq "Ok"} {
+        # The user wants to accept this; initialize the result from the
+        # parameterization dict:
+        
+        set paramdict $::GET::parameterization
+         
+         # Augment the dict with the values in the form:
+         
+         dict for {key value} $paramdict {
+            set val [$form cget $::GET::optionlookup($key)]
+            dict lappend paramdict $key [list] [string trim $val]
+         }
+    } 
+    
+    destroy .getparamtoplevel
+    return $paramdict
+}
+
