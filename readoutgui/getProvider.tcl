@@ -35,6 +35,8 @@ package require Tk
 #
 
 namespace eval ::GET {
+    variable getBinDir    [file join usr opt GET bin]
+    variable daqbin       $::env(DAQBIN)
     
     
     ##
@@ -53,6 +55,7 @@ namespace eval ::GET {
     #     -  runNumber    - Number of the last run.
     #     -  ... @todo add to this as we need additional stuff.
     #
+    variable activeProviders
     array set activeProviders [list]
 }
 
@@ -142,9 +145,7 @@ and connect the nsclrouter to the datatflow."
 proc ::GET::check id {
     
     set state [::GET::getActiveSource $id]
-    set params [dict get $state parameterization]
-    
-    return [GET::checkPersistentProcesses $params]
+    return [GET::checkPersistentProcesses $state]
 }
 ##
 #  ::GET::stop
@@ -181,7 +182,7 @@ proc ::GET::begin {source runNum title} {
     dict set state runstartime [clock seconds]
     set ::GET::activeProvide($source) $state;      # Update state with start time
     
-    ::GET::startAcquisition  $state
+    ::GET::startAcquisition  [dict get $state parameterization]
     
 }
 
@@ -203,7 +204,7 @@ proc ::GET::reseume id {
 proc ::GET::end source {
     set state [::GET::getActiveSource $source]
     
-    ::GET::stopAcquisition $state
+    ::GET::stopAcquisition [dict get $state parameterization]
     ::GET::emitEndRun $state
 }
 
@@ -217,7 +218,7 @@ proc ::GET::end source {
 #
 proc ::GET::init id {
     set state [::GET::getActiveSource $id]
-    ::GET::killActiveprocesses $state;          # Can use the PIDS and close fds.
+    ::GET::killPersistentProcesses $state;          # Can use the PIDS and close fds.
     ::GET::startPersistentProcesses $id
 }
 ##
@@ -234,12 +235,265 @@ proc::GET::capabilities {} {
 #-------------------------------------------------------------------------------
 # Utility procs that make the world go 'round.
 
-proc ::GET::killPersistentProcesses id {};       # stub.
-proc ::GET::startPersistentProcesses id {};      # stub.
-proc ::GET::checkPersistentProcesses params {};  # stub
-proc ::GET::createRingBuffers id {};             # stub
-proc ::GET::getActiveSource id {};                   # stub
-proc ::GET::emitBegin {id num title} {};         # stub.
-proc ::GET::startAcquisition state {};           # stub.
-proc ::GET::stopAcquisition state {}            ; #stub
-proc ::GET::emitEndRun state {}                 ; #stub
+##
+# ::GET::getActiveSource
+#    Return the state/parameter dict corresponding to the specified
+#    source id.
+#
+# @param  id   - Id to looukup.
+# @return dict = See comments in activeProviders for information about
+#                the keys/values.
+# @throw - if the id is not an active source id
+proc ::GET::getActiveSource id {
+    if {[array  names ::GET::activeProviders $id] eq $id} {
+        return $::GET::activeProviders($id)
+    } else {
+        error "There is no active source with the id $id"
+    }
+}
+##
+# ::GET::killPersistsentProcesses
+#
+#   Stops the persistent processes that make up an id.
+#   If the dict that defines the source has pids set, then
+#   we do surgical strikes killing by PID -- and then
+#   removing the PID dict keys.  If not we assume there's really
+#   only one guy that can use the GET interface system so we do killalls
+#   by process name.  The success of that will, of course be limited to
+#   processes this user started.
+#
+# @param id - the source id that specifies the provider.  This
+#             provides hostnames as well as potentially pids in those hostnames.
+#
+proc ::GET::killPersistentProcesses id {
+    set info [::GET::getActiveSource $id]
+    set  params [dict get $info parameterization]
+    set  gethost [dict get $params spdaq]
+    set  routerhost [::GET::ringhost [dict get $params datauri]]
+    
+    # Now do the kills.
+    
+    ::GET::killProcess $info $gethost geteccserver eccserveroutput getEccServer
+    ::GET::killProcess $info $routerhost nsclrouter routeroutput   nsclrouter
+    ::GET::killProcess $info localhost   ringmerge  mergeout       ringmerge
+    
+}
+
+
+##
+# ::GET::startPersistentProcesses
+#    Starts the persistent GET processes for the source id specified.
+#    These include:
+#    - getEccServer - which must be run in the spdaq host.
+#    - nsclrouter   - which is run in the system specified by the data ring uri.
+#    - ringmerge    - which must be run in this host.
+#
+proc ::GET::startPersistentProcesses id {
+    set info [::GET::getActiveSource $id]
+    set params [dict get $info parameterization]
+    
+    set result [::GET::startEccServer $params]
+    dict set info geteccserver [lindex $result 0] eccserveroutput [lindex $result 1]
+    
+    set result [::GET::startNsclRouter $params]
+    dict set info nsclrouter [lindex $result 0] routeroutput [lindex $result  1]
+    
+    set result [::GET::startRingMerge $params]
+    dict set info ringmerge [lindex $result 0] mergeout [lindex $result 1]
+    
+    set activeProviders($id) $info;            # Update the dict.
+}
+##
+# GET::checkPersistentProcesses
+#    Given the pids of the persistent processes (in the info block) and the
+#    hosts in which they are running, determines if all of them are running.
+#
+# @param infoi - information dict about the current run.
+# @return bool - true if all persistent processes are running.
+#
+proc ::GET::checkPersistentProcesses info {
+    set  params [dict get $info parameterization]
+    set  gethost [dict get $params spdaq]
+    set  routerhost [::GET::ringhost [dict get $params datauri]]
+    
+    set eccok    [::GET::checkProcess [dict get $info geteccserver] $gethost]]
+    set routerok [::GET::checkProcess [dict get $info nsclrouter $routerhost]]
+    set mergeok  [::GET::checkProcess [dict get $info ringmerge localhost]]
+    
+    return [expr {$eccok && $routerok && mergeok}]
+    
+}
+##
+# GET::createRingBuffers
+#    Create the ring buffers associated with a data source.
+#
+# @param id  - id of the data source.
+#
+proc ::GET::createRingBuffers id {
+    set info [::GET::getActiveSource $id]
+    set params [dict get $info parameterization]
+    
+    set routerhost [::GET::ringhost [dict get $params datauri]]
+    set routerring [::GET::ringname [dict get $params datauri]]
+    ::GET::makeRing $routerhost $routerring
+    
+    set statehost [::GET::ringhost [dict get $params stateuri]]
+    set statering [::GET::ringname [dict get $params stateuri]]
+    ::GET::makeRing $statehost $statering
+    
+    ::GET::makeRing localhost [dict get $params outputring]
+}
+##
+# ::GET::emitBegin
+#     Runs the insertstatechange program in the host that has the
+#     state transition ring so that it will insert a begin run in that ring.
+#
+# @param id    - data source id.
+# @param num   - run number.
+# @param title - Run title.
+#
+proc ::GET::emitBegin {id num title} {
+    set info [::GET::getActiveSource $id]
+    set params [dict get $info parameterization]
+    
+    set statehost [::GET::ringhost [dict get $params stateuri]]
+    set statering [::GET::ringname [dict get $params stateuri]]
+    set sourceid  [dict get $params sourceid]
+    dict set info runstarttime [clock seconds]
+    dict set info runtitle $title
+    dict set info runNumber $num
+    set path [file join $::GET::getBinDir insertstatechange]
+    
+    ssh::ssh $statehost [list \
+        $path --ring=$statering --run=$num --title=$title --source-id=$sourcid \
+        --type=begin]
+    
+    # If that worked we can update the sources dict:
+    
+    set $activeProviders($id) $info
+    
+    #  Let the begin run record percolate through the system.
+    
+    after 500
+}
+##
+# changeAcquisitionState
+#    change the acqusition status.
+#
+# @param params - the parameterization of the data source.
+# @param command - The command tail of the program to do this
+#
+proc ::GET::changeAcquisitionState {params program} {
+    set coboip [dict get $params coboip]
+    set cobosvc [dict get $params coboservice]
+    set arg1 $coboip:$cobosvc
+    
+    set ecchost [dict get $params privateip]
+    set eccsvc [dcit get $params eccservice]
+    set args $ecchost:$eccsvc
+    
+    set spdaq [dict get $params spdaq]
+    set path [file join $::GET::getBinDir $program]
+    
+    ssh::ssh $spdaq [list $path $arg1 $arg2]
+    
+}
+##
+# ::GET::startAcquisition
+#    Starts the data acquisition in the GET modules to the data router.
+#    The assumption is that any begin run item that was needed is already
+#    on its way through the system...at least has been seen by the merge program.
+#
+# @param params - data source parameterization.
+#                 We need the coboip, coboservice the spdaq and privateip and
+#                 eccservice
+#                 
+proc ::GET::startAcquisition params {
+    ::GET::changeAcquisitionState $params daqstart
+}
+##
+# ::GET::stopAcquisition
+#    Stop acquisition in the GET hardware.
+#
+# @param params - the data source parameters.
+proc ::GET::stopAcquisition params {
+    ::GET::changeAcquisitionState  $params daqstop
+    after 500;                  # Let this run down.
+}
+##
+# ::GET::emitEndRun
+#    Emits the end run item to the state ring.
+#    Note that the run time is computed from now - runstarttime
+#    The title and run number for the record are also gotten
+#    from the state dict.
+#
+proc ::GET::emitEndRun state {
+
+    set params [dict get $state parameterization]
+    
+    set statehost [::GET::ringhost [dict get $params stateuri]]
+    set statering [::GET::ringname [dict get $params stateuri]]
+    set sourceid  [dict get $params sourceid]
+    set title [dict get $state runtitle]
+    set num   [dict get $state runNumber]
+    set duration [expr {[clock seconds] - [dict get $state runstarttime]}]
+
+    set path [file join $::GET::getBinDir insertstatechange]
+    
+    ssh::ssh $statehost [list \
+        $path --ring=$statering --run=$num --title=$title --source-id=$sourcid \
+        --type=end --offset $duration]    
+
+}
+##
+# ::GET::ringhost
+#
+#   Given a ring uri of the form tcp://host/ring
+#   Returns the host.
+#
+# @param uri - ringbuffer uri
+# @return string  hostname part of the uri.
+#
+proc ::GET::ringhost uri {
+    set parts [split $uri /]
+    return [lindex $parts 2]
+}
+##
+# ::GET::ringname
+#
+#
+#   Given a ring uri of the form tcp://host/ring
+#   Returns the ring name.
+#
+# @param uri - ringbuffer uri
+# @return string  ring name part of the uri.
+#
+proc ::GET::ringname uri {
+    set parts [split $uri /]
+    return [lindex $parts 3]
+    
+}
+##
+# ::GET::killProcess
+#     Kills a process.
+#
+# @param info - the dict that represents the state and parameterization of the
+#               data source.
+# @param host - The host in which the process is running.
+# @param pidkey,pipekey - The info keys that have the pid and pipe fd for the
+#               process.  If these are set we'll try to use them to do a targeted
+#               kill.
+# @param processname - If pidkey and/or pipekey are not defined, we'll use this
+#              to try to do a killall of processname (nuclear option - pun intended).
+# @note - if pidkey and pipekey are defined, then they are unset from
+#         the info dict and that's used to update the source's dict.
+#         Note that the source id is [dict get $info parameterization sourceid]
+#
+proc ::GET::killProcess {info host pidkey pipekey processname} {
+}
+proc ::GET::startEccServer params {}
+proc ::GET::startNsclRouter params {}
+proc ::GET::startRingmerge params {}
+proc ::GET::runImage {host image} {return [list pid fd]}
+proc ::GET::checkProcess {pid host} {}
+proc ::GET::makeRing {host name} {}
