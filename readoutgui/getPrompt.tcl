@@ -32,7 +32,17 @@ package require DataSourceUI
 package require Iwidgets
 
 namespace eval GET {
+    
+    # Directory defs:
+    #
+    #  - installedIn - the directory we're in $prefix/TclLibs/
+    #  - getBinDir   - Directory the GET software runnables are in.
+    #  - getNsclDaqBindir - Directory our binaries are in.
+    #  - daqbin      - Where the NSCLDAQ programs are installed.
+    #
+
     variable installedIn  [file dirname [info script]];  #Helpdir too.
+    variable getNsclDaqBindir [file normalize [file join $installedIn .. bin]]
     #
     #  This defines the set of configurable parameters for get data sources.
     #  It's a template of the dict that will be used to initialize/parameterize
@@ -42,6 +52,8 @@ namespace eval GET {
     variable parameterization [dict create \
         spdaq [list {Host that is connected to GET uTCA crate}] \
         privateip [list {IP address of the spdaq host on the uTCA private subnet}] \
+        coboip    [list {IP Address of the COBO this source takes data from}]    \
+        coboservice [list {Service address the cobo accepts requests on}] \
         dataservice [list {Service on which the data router listens for event connections}] \
         datauri     [list {URI of ring into which GET frames are put as ring items}] \
         stateuri    [list {URI of ring into which run state change items are put}] \
@@ -59,6 +71,7 @@ array set ::GET::optionlookup [list                                      \
     spdaq -spdaq privateip -privateip dataservice -datasvc               \
     datauri -datauri stateuri -stateuri outputring -outputring           \
     timestampsource -timestampsource sourceid -sourceid                   \
+    coboip -coboip coboservice -coboservice                                 \
 ]
 ##
 #   GET parameters are into three parts divided:
@@ -82,15 +95,18 @@ snit::widgetadaptor ::GET::HostPrompts {
     option -spdaq     -default localhost 
     option -privateip -default 0.0.0.0 \
         -cgetmethod _getPrivateIp -configuremethod _setPrivateIp
+    option -coboip    -default 0.0.0.0 \
+        -cgetmethod _getCoboIp   -configuremethod _setCoboIp
+    option -coboservice -default 46001
     option -datasvc   -default 46005
     
     constructor args {
         installhull using ttk::frame;               # Install stuff in themed frame.
         
-        ttk::label $win.publicttk::label -text "Public IP DNS name"
+        ttk::label $win.publiclabel -text "Public IP DNS name"
         ttk::entry $win.publicip    -textvariable [myvar options(-spdaq)] -width 25
         
-        ttk::label $win.privateipttk::label -text "Private GET IP address"
+        ttk::label $win.privateiplabel -text "Private GET IP address"
         $self _createOctet $win.octet1
         ttk::label $win.octet1delim  -text . 
         $self _createOctet $win.octet2 
@@ -101,19 +117,38 @@ snit::widgetadaptor ::GET::HostPrompts {
         
         ttk::label $win.servicedelim -text :
         ttk::entry $win.dataservice -textvariable [myvar options(-datasvc)] -width 6
+        
+        ttk::label $win.coboiplabel -text "CoBo IP: "
+        $self _createOctet $win.coctet1
+        ttk::label $win.coctet1delim  -text . 
+        $self _createOctet $win.coctet2 
+        ttk::label $win.coctet2delim  -text .
+        $self _createOctet $win.coctet3 
+        ttk::label $win.coctet3delim  -text .
+        $self _createOctet $win.coctet4
+    
+        ttk::label $win.cservicedelim -text :
+        ttk::entry $win.cservice -textvariable [myvar options(-coboservice)] -width 6
              
         $self configurelist $args
         
         # Layout the widgets.
         
-        grid $win.publicttk::label
+        grid $win.publiclabel
         grid $win.publicip -row 0 -column 1 -columnspan 9
         
-        grid $win.privateipttk::label $win.octet1 $win.octet1delim                      \
+        grid $win.privateiplabel $win.octet1 $win.octet1delim                      \
             $win.octet2 $win.octet2delim $win.octet3 $win.octet3delim $win.octet4 \
             $win.servicedelim $win.dataservice
         
+
+        grid $win.coboiplabel $win.coctet1 $win.coctet1delim                      \
+            $win.coctet2 $win.coctet2delim $win.coctet3 $win.coctet3delim   \
+            $win.coctet4 $win.cservicedelim $win.cservice
+        
+        
         $self configure -privateip $options(-privateip);   #load the entry.
+        $self configure -coboip $options(-coboip)
     }
     #--------------------------------------------------------------------------
     # Private methods:
@@ -130,7 +165,23 @@ snit::widgetadaptor ::GET::HostPrompts {
             -validatecommand [mymethod _isOctet %W]                        \
         ]
     }
-    
+    ##
+    # _validOctet
+    #   See _isOctet
+    #
+    # @param value - value proposed for an octet.
+    # @return bool - true if ok false if not.
+    #
+    proc _validOctet value {
+       
+        if {![string is integer -strict $value]} {
+            return 0
+        }
+        
+        set result [expr {($value >= 0) && ($value <= 255)}]
+        
+        return $result
+    }
     ##
     # _isOctet
     #   Valid octets must be integers in the range [0, 255].
@@ -140,13 +191,8 @@ snit::widgetadaptor ::GET::HostPrompts {
     #
     method _isOctet {w} {
         set value [$w get]
-        if {![string is integer -strict $value]} {
-            $w delete 0 end
-            $w insert end 0
-            return 0
-        }
+        set result [_validOctet $value]
         
-        set result [expr {($value >= 0) && ($value <= 255)}]
         if {!$result} {
             $w delete 0 end
             $w insert end 0
@@ -182,6 +228,16 @@ snit::widgetadaptor ::GET::HostPrompts {
         if {[llength $octets] != 4} {
             error "$value is not a valid numeric IP address - must have 4 octets."
         }
+        #
+        # validate
+        #
+        foreach octet $octets {
+            if {![_validOctet $octet]} {
+                error "$octet is not a valid IP octet in $value"
+            }
+        }
+        #  set
+        
         foreach octet $octets                    \
             window [list $win.octet1 $win.octet2 $win.octet3 $win.octet4] {
             
@@ -189,7 +245,50 @@ snit::widgetadaptor ::GET::HostPrompts {
             $window insert end $octet
         }
     }
-    
+    ##
+    # _getCoboIp
+    #    Figure out the cobo IP address from its octetst.
+    #
+    # @param optname - option name (ignored).
+    # @return string - dotted IP address of the cobo.
+    #
+    method _getCoboIp optname {
+        set octets [list]
+        foreach window [list $win.coctet1 $win.coctet2 $win.coctet3 $win.coctet4] {
+            lappend octets [$window get]
+        }
+        return [join $octets .]        
+    }
+    ##
+    # _setCoboIp
+    #    Validate a proposed cobo IP and, if it's any good, load it into the
+    #    octet entries.
+    #
+    # @param optname - option name being configured (ignored).
+    # @param value   - proposed new dotted IP address.
+    #
+    method _setCoboIp {optname value} {
+        set octets [split $value .]
+        if {[llength $octets] != 4} {
+            error "$value is not a valid numeric IP address - must have 4 octets."
+        }
+        # Validate:
+        
+        foreach octet $octets {
+            if {![_validOctet $octet]} {
+                error "$octet is not a valid octet in $value"
+            }
+        }
+        
+        # Set
+        
+        foreach octet $octets                    \
+            window [list $win.coctet1 $win.coctet2 $win.coctet3 $win.coctet4] {
+            
+            $window delete 0 end
+            $window insert end $octet
+        }        
+    }
         
 }
 
@@ -396,6 +495,8 @@ snit::widgetadaptor ::GET::GetPromptForm {
     delegate option -spdaq     to networkParameters
     delegate option -privateip to networkParameters
     delegate option -datasvc   to networkParameters
+    delegate option -coboip    to networkParameters
+    delegate option -coboservice  to networkParameters
     
     # Make the ring buffer parameter options visible:
     
