@@ -54,7 +54,7 @@ namespace eval GET {
         privateip [list {IP address of the spdaq host on the uTCA private subnet}] \
         coboip    [list {IP Address of the COBO this source takes data from}]    \
         coboservice [list {Service address the cobo accepts requests on}] \
-        dataservice [list {Service on which the data router listens for event connections}] \
+        eccservice [list {Service on which the ecc server listens for requests}] \
         datauri     [list {URI of ring into which GET frames are put as ring items}] \
         stateuri    [list {URI of ring into which run state change items are put}] \
         outputring  [list {Ring name into which datauri and stateuri items are merged}] \
@@ -68,7 +68,7 @@ namespace eval GET {
 
 }
 array set ::GET::optionlookup [list                                      \
-    spdaq -spdaq privateip -privateip dataservice -datasvc               \
+    spdaq -spdaq privateip -privateip eccservice -eccservice               \
     datauri -datauri stateuri -stateuri outputring -outputring           \
     timestampsource -timestampsource sourceid -sourceid                   \
     coboip -coboip coboservice -coboservice                                 \
@@ -98,7 +98,7 @@ snit::widgetadaptor ::GET::HostPrompts {
     option -coboip    -default 0.0.0.0 \
         -cgetmethod _getCoboIp   -configuremethod _setCoboIp
     option -coboservice -default 46001
-    option -datasvc   -default 46005
+    option -eccservice   -default 46002
     
     constructor args {
         installhull using ttk::frame;               # Install stuff in themed frame.
@@ -116,7 +116,7 @@ snit::widgetadaptor ::GET::HostPrompts {
         $self _createOctet $win.octet4
         
         ttk::label $win.servicedelim -text :
-        ttk::entry $win.dataservice -textvariable [myvar options(-datasvc)] -width 6
+        ttk::entry $win.dataservice -textvariable [myvar options(-eccservice)] -width 6
         
         ttk::label $win.coboiplabel -text "CoBo IP: "
         $self _createOctet $win.coctet1
@@ -494,7 +494,7 @@ snit::widgetadaptor ::GET::GetPromptForm {
     
     delegate option -spdaq     to networkParameters
     delegate option -privateip to networkParameters
-    delegate option -datasvc   to networkParameters
+    delegate option -eccservice   to networkParameters
     delegate option -coboip    to networkParameters
     delegate option -coboservice  to networkParameters
     
