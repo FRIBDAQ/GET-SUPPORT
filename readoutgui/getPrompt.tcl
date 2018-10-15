@@ -51,9 +51,9 @@ namespace eval GET {
     #
     variable parameterization [dict create \
         spdaq [list {Host that is connected to GET uTCA crate}] \
-        privateip [list {IP address of the spdaq host on the uTCA private subnet}] \
-        coboip    [list {IP Address of the COBO this source takes data from}]    \
-        coboservice [list {Service address the cobo accepts requests on}] \
+        eccip [list {IP address on private subnet of ecc server}] \
+        dataip    [list {IP Address on the private subnet of the data flow service}]    \
+        dataservice [list {Service number for the data flow service}] \
         eccservice [list {Service on which the ecc server listens for requests}] \
         datauri     [list {URI of ring into which GET frames are put as ring items}] \
         stateuri    [list {URI of ring into which run state change items are put}] \
@@ -68,10 +68,10 @@ namespace eval GET {
 
 }
 array set ::GET::optionlookup [list                                      \
-    spdaq -spdaq privateip -privateip eccservice -eccservice               \
+    spdaq -spdaq eccip -eccip eccservice -eccservice               \
     datauri -datauri stateuri -stateuri outputring -outputring           \
     timestampsource -timestampsource sourceid -sourceid                   \
-    coboip -coboip coboservice -coboservice                                 \
+    dataip -dataip dataservice -dataservice                                 \
 ]
 ##
 #   GET parameters are into three parts divided:
@@ -93,11 +93,11 @@ array set ::GET::optionlookup [list                                      \
 
 snit::widgetadaptor ::GET::HostPrompts {
     option -spdaq     -default localhost 
-    option -privateip -default 0.0.0.0 \
+    option -eccip -default 0.0.0.0 \
         -cgetmethod _getPrivateIp -configuremethod _setPrivateIp
-    option -coboip    -default 0.0.0.0 \
+    option -dataip    -default 0.0.0.0 \
         -cgetmethod _getCoboIp   -configuremethod _setCoboIp
-    option -coboservice -default 46001
+    option -dataservice -default 46001
     option -eccservice   -default 46002
     
     constructor args {
@@ -106,7 +106,7 @@ snit::widgetadaptor ::GET::HostPrompts {
         ttk::label $win.publiclabel -text "Public IP DNS name"
         ttk::entry $win.publicip    -textvariable [myvar options(-spdaq)] -width 25
         
-        ttk::label $win.privateiplabel -text "Private GET IP address"
+        ttk::label $win.privateiplabel -text "Private IP:service for eccserver"
         $self _createOctet $win.octet1
         ttk::label $win.octet1delim  -text . 
         $self _createOctet $win.octet2 
@@ -118,7 +118,7 @@ snit::widgetadaptor ::GET::HostPrompts {
         ttk::label $win.servicedelim -text :
         ttk::entry $win.dataservice -textvariable [myvar options(-eccservice)] -width 6
         
-        ttk::label $win.coboiplabel -text "CoBo IP: "
+        ttk::label $win.coboiplabel -text "Private IP:sevice for dataflow"
         $self _createOctet $win.coctet1
         ttk::label $win.coctet1delim  -text . 
         $self _createOctet $win.coctet2 
@@ -128,7 +128,7 @@ snit::widgetadaptor ::GET::HostPrompts {
         $self _createOctet $win.coctet4
     
         ttk::label $win.cservicedelim -text :
-        ttk::entry $win.cservice -textvariable [myvar options(-coboservice)] -width 6
+        ttk::entry $win.cservice -textvariable [myvar options(-dataservice)] -width 6
              
         $self configurelist $args
         
@@ -147,8 +147,8 @@ snit::widgetadaptor ::GET::HostPrompts {
             $win.coctet4 $win.cservicedelim $win.cservice
         
         
-        $self configure -privateip $options(-privateip);   #load the entry.
-        $self configure -coboip $options(-coboip)
+        $self configure -eccip $options(-eccip);   #load the entry.
+        $self configure -dataip $options(-dataip)
     }
     #--------------------------------------------------------------------------
     # Private methods:
@@ -493,10 +493,10 @@ snit::widgetadaptor ::GET::GetPromptForm {
     # Make the network parameter options visible:
     
     delegate option -spdaq     to networkParameters
-    delegate option -privateip to networkParameters
+    delegate option -eccip to networkParameters
     delegate option -eccservice   to networkParameters
-    delegate option -coboip    to networkParameters
-    delegate option -coboservice  to networkParameters
+    delegate option -dataip    to networkParameters
+    delegate option -dataservice  to networkParameters
     
     # Make the ring buffer parameter options visible:
     
@@ -560,6 +560,7 @@ proc ::GET::showHelp {} {
 #          long prompt, dummy widget name and parameter value
 #
 proc GET::promptParameters {} {
+    destroy .getparamtoplevel
     toplevel .getparamtoplevel
     set dlg [DialogWrapper .getparamtoplevel.dialog]
     set container [$dlg controlarea]
