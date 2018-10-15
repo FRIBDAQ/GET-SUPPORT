@@ -30,6 +30,7 @@ package require Wait
 package require ReadoutGUIPanel
 package require GET_Prompter
 package require Tk
+package require RemoteUtilities
 #
 #   We have some stuff (besides code) to put in the GET namespace:
 #
@@ -269,13 +270,15 @@ proc ::GET::killPersistentProcesses id {
     set info [::GET::getActiveSource $id]
     set  params [dict get $info parameterization]
     set  gethost [dict get $params spdaq]
-    set  routerhost [::GET::ringhost [dict get $params datauri]]
+    set  routerhost $gethost
+    set thishost [exec hostname]
+#    set  routerhost [::GET::ringhost [dict get $params datauri]]
     
     # Now do the kills.
     
     ::GET::killProcess $info $gethost geteccserver eccserveroutput getEccServer
     ::GET::killProcess $info $routerhost nsclrouter routeroutput   nsclrouter
-    ::GET::killProcess $info localhost   ringmerge  mergeout       ringmerge
+    ::GET::killProcess $info $thishost   ringmerge  mergeout       ringmerge
     
 }
 
@@ -314,13 +317,16 @@ proc ::GET::startPersistentProcesses id {
 proc ::GET::checkPersistentProcesses info {
     set  params [dict get $info parameterization]
     set  gethost [dict get $params spdaq]
-    set  routerhost [::GET::ringhost [dict get $params datauri]]
+    set routerhost $gethost
+    set thisHost [exec hostname]
     
-    set eccok    [::GET::checkProcess [dict get $info geteccserver] $gethost]]
-    set routerok [::GET::checkProcess [dict get $info nsclrouter $routerhost]]
-    set mergeok  [::GET::checkProcess [dict get $info ringmerge localhost]]
+    #set  routerhost [::GET::ringhost [dict get $params datauri]]
     
-    return [expr {$eccok && $routerok && mergeok}]
+    set eccok    [::GET::checkProcess getEccServer $gethost]
+    set routerok [::GET::checkProcess nscldatarouter $routerhost]
+    set mergeok  [::GET::checkProcess ringmerge $thisHost]
+    
+    return [expr {$eccok && $routerok && $mergeok}]
     
 }
 ##
@@ -488,12 +494,179 @@ proc ::GET::ringname uri {
 # @note - if pidkey and pipekey are defined, then they are unset from
 #         the info dict and that's used to update the source's dict.
 #         Note that the source id is [dict get $info parameterization sourceid]
+# @note - processes are started on an ssh pipe.  which  means much of what
+#         we wanted to do we can't acutally do.
 #
 proc ::GET::killProcess {info host pidkey pipekey processname} {
+    if {[dict exists $info $pipekey]} {
+        # The pipe fd can be closed:
+        
+        close [dicte get $info $pipekey]
+        dict unset $info $pipekey
+        dict unset $info $pidkey;        # SSH pid.
+    }
+    #  Figure out the PID of the remote process
+    
+    set pidList [::RemoteUtil::remotePid $host $processname]
+    foreach pid $pidlist {
+        RemoteUtil::kill $host $pid
+    }
 }
-proc ::GET::startEccServer params {}
-proc ::GET::startNsclRouter params {}
-proc ::GET::startRingmerge params {}
-proc ::GET::runImage {host image} {return [list pid fd]}
-proc ::GET::checkProcess {pid host} {}
-proc ::GET::makeRing {host name} {}
+##
+# ::GET::startEccServer
+#
+#     Starts the getEccServer program.
+#
+# @param params - the parameters dict for the source.
+#                 We need:
+#               - spdaq from that dict as that's were we're going
+#                 to put the ECC server.
+#               - ::GET::getBindir which is where getEccServer is installed.
+#  We return a two element list consisting of the ssh pid and fd open
+#  on the ssh pipe.
+#
+# @note -sstdout and stderr from the ssh pipe are caught by our
+#        ::GET::handleOuptut proc.
+# 
+proc ::GET::startEccServer params {
+    set host [dict get $params spdaq]
+    set command [file join $::GET::getBinDir getEccServer]
+    set info [ssh::sshpid $host $command]
+    
+    set pid [lindex $info 0]
+    set fd  [lindex $info 1]
+    
+    ::GET::setupOutputHandler $fd
+    
+    return [list $pid $fd]
+}
+##
+#    ::GET::startNsclRouter
+#
+#  Starts the NSCL GET data router.  This is a version of the GET dataRouter
+#  program that can insert GET frames as ring items in an NSCLDAQ ring buffer.
+#
+# @param params - The dict that has the parameterization of the
+#                 data source.  We need the following items:
+#                 -  spdaq - host in which this is going to be run.
+#                 -  eccip the private subnet IP in which the ecc server is running.
+#                 -  eccservice - The service number on which eccServer accepts connections.
+#                 -  dataip - the Private subnet IP in which the router runs.
+#                 -  dataservice - The service number on which the router listens.
+#                 -  datauri - the URI of the ring in which the nsclrouter puts data
+#                 -  sourceid - the data source id the ring items have.
+#                 - timestampsource - what to put in for the timestamp.
+#
+# @return list [list pid pipefd]
+#
+proc ::GET::startNsclRouter params {
+    set host [dict get $params spdaq]
+    
+    set eccip [dict get $params eccip]
+    set eccsvc [dict get $params eccservice]
+    
+    set dataip [dict get $params dataip]
+    set datasvc [dict get $params dataservice]
+    
+    set ringname [::GET::ringName [dict get $params datauri]]
+    set srcid    [dict get $params sourceid]
+    set tsSrc    [dict get $params timestampsource]
+    
+    set program \
+        [file normalize [file join $::GET::getNsclDaqBindir nscldatarouter]]
+    
+    set info [ssh::sshpid $host [list $program \
+        --controlservice $eccip:$eccsvc --dataservice $dataip:$datasvc        \
+        --ringname $ringname --id $srcid --timestamp $tsSrc]]
+    
+    set pid [lindex $info 0]
+    set fd [lindex $info 1]
+    ::GET::setupOutputHandler $fd
+    
+    return [list $pid $fd]
+}
+##
+# ::GET::startRingMerge
+#
+#     Starts the ring merge program
+#
+# @param params - the parameterization dictionary of the data source.
+#                 We need:
+#                 -   datauri - URI of the ring in which data items are put.
+#                 -   stateuri - URI of the ring in which state change items are
+#                                put.
+#                 -   outputring - Name of the output ring.
+#
+# @note - The ring merge program is run in the host the script is running int.
+#
+#            
+proc ::GET::startRingmerge params {
+    set ourHost [exec hostname]
+    set dataring  [dict get $params datauri]
+    set statering [dict get $params stateuri]
+    set outring   [dict get $params outputring]
+    
+    set program [file normalize [file join $::GET::getNsclDaqBindir ringmerge]]
+    
+    set info [ssh::sshpid \
+        $ourHost [list $program --input $dataring --input $statering   \
+        --output $outputring]                 \
+    ]
+    
+    set pid [lindex $info 0]
+    set fd [lindex $info 1]
+    ::GET::setupOutputHandler $fd
+    
+    return [list $pid $fd]
+}
+##
+# ::GET::checkProcess
+#     @param command - name of the command to check.
+#     @param host    - Host in which the command is running.
+#
+#     @return bool - true if the process is found in the remote system.
+#
+proc ::GET::checkProcess {command host} {
+    set pids [::RemoteUtil::remotePid  $host $command]
+    
+    return [expr {[llength $pids] > 0}]
+}
+##
+# ::GET::makeRing
+#     Make a ring buffer in a remote host.
+#
+# @param host - name/IP of the host in which to create the ringbufer
+# @param name - name of the ring buffer being created.
+#
+proc ::GET::makeRing {host name} {
+    set program [file join $daqbin  ringbufer]
+    set command [list $program create $name]
+    ssh::ssh $host $command;    # Errors caught in ssh::ssh.
+}
+##
+# ::GET::setupOutputHandler
+#     Sets up an fd to  use ::GET::handleOutput whenever
+#     input is available.
+#
+#   @note that fd is set in non blocking mode.
+#    
+proc ::GET::setupOutputHandler {fd} {
+    fconfigure $fd -blocking 0
+    fileevent $fd readable [list ::GET::handleOutput $fd]
+}
+##
+# ::GET::handleOutput
+#    - If the fd is at eof, unset the file event handler.  The fd will
+#      be closed by other code.
+#    - Otherwise, read a line from the file and
+#      submit it as a log message to the console.
+#
+# @param fd - File descriptor that is readable.
+proc ::GET::handleOutput {fd} {
+    if {[eof $fd]} {
+        fileevent $fd readable ""
+    } else {
+        set line [gets $fd]
+        ReadoutGUIPanel::log GET info $line       
+    }
+}
