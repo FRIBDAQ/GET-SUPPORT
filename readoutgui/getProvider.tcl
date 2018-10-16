@@ -181,10 +181,10 @@ proc ::GET::begin {source runNum title} {
     
     #  Emit the begin run item:
     
-    ::GET::emitBegin $id $runNum $title
+    ::GET::emitBegin $source $runNum $title
     
     dict set state runstartime [clock seconds]
-    set ::GET::activeProvide($source) $state;      # Update state with start time
+    set ::GET::activeProviders($source) $state;      # Update state with start time
     
     ::GET::startAcquisition  [dict get $state parameterization]
     
@@ -280,7 +280,7 @@ proc ::GET::killPersistentProcesses id {
     # Now do the kills.
     
     ::GET::killProcess $info $gethost geteccserver eccserveroutput getEccServer
-    ::GET::killProcess $info $routerhost nsclrouter routeroutput   nsclrouter
+    ::GET::killProcess $info $routerhost nsclrouter routeroutput   nscldatarouter
     ::GET::killProcess $info $thishost   ringmerge  mergeout       ringmerge
     
 }
@@ -307,7 +307,7 @@ proc ::GET::startPersistentProcesses id {
     set result [::GET::startRingMerge $params]
     dict set info ringmerge [lindex $result 0] mergeout [lindex $result 1]
     
-    set activeProviders($id) $info;            # Update the dict.
+    set ::GET::activeProviders($id) $info;            # Update the dict.
 }
 ##
 # GET::checkPersistentProcesses
@@ -372,14 +372,18 @@ proc ::GET::emitBegin {id num title} {
     dict set info runtitle $title
     dict set info runNumber $num
     set path [file join $::GET::getBinDir insertstatechange]
-    
+
+    set command [list \
+        $path --ring=$statering --run=$num --title="$title" --source-id=$sourceid \
+		    --type=begin]
+    puts "Emitting begin run with '$command' on $statehost
     ssh::ssh $statehost [list \
-        $path --ring=$statering --run=$num --title=$title --source-id=$sourcid \
+        $path --ring=$statering --run=$num --title="$title" --source-id=$sourceid \
         --type=begin]
     
     # If that worked we can update the sources dict:
     
-    set $activeProviders($id) $info
+    set ::GET::activeProviders($id) $info
     
     #  Let the begin run record percolate through the system.
     
@@ -534,6 +538,9 @@ proc ::GET::killProcess {info host pidkey pipekey processname} {
 proc ::GET::startEccServer params {
     set host [dict get $params spdaq]
     set command [file join $::GET::getBinDir getEccServer]
+
+    puts "***** Starting eccserver: '$command' in $host"
+    
     set info [ssh::sshpid $host $command]
     
     set pid [lindex $info 0]
@@ -580,7 +587,7 @@ proc ::GET::startNsclRouter params {
     
     set info [ssh::sshpid $host [list $program \
         --controlservice $eccip:$eccsvc --dataservice $dataip:$datasvc        \
-        --ringname $ringname --id $srcid --timestamp $tsSrc]]
+        --ring $ringname --id $srcid --timestamp $tsSrc --outputtype RingBuffer]]
     
     set pid [lindex $info 0]
     set fd [lindex $info 1]
@@ -613,7 +620,7 @@ proc ::GET::startRingMerge params {
     
     set info [ssh::sshpid \
         $ourHost [list $program --input $dataring --input $statering   \
-        --output $outputring]                 \
+        --output $outring]                 \
     ]
     
     set pid [lindex $info 0]
@@ -642,8 +649,9 @@ proc ::GET::checkProcess {command host} {
 # @param name - name of the ring buffer being created.
 #
 proc ::GET::makeRing {host name} {
-    set program [file join $::GET::daqbin  ringbufer]
+    set program [file join $::GET::daqbin  ringbuffer]
     set command [list $program create $name]
+
     ssh::ssh $host $command;    # Errors caught in ssh::ssh.
 }
 ##

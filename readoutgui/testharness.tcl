@@ -48,8 +48,19 @@ proc stripdict dict {
     return $result
 }
 
-source utilities.tcl
-source getPrompt.tcl
-source getProvider.tcl
+set instdir $env(PREFIX)
+
+source [file join $instdir TclLibs utilities.tcl]
+source [file join $instdir TclLibs getPrompt.tcl]
+source [file join $instdir TclLibs getProvider.tcl]
 
 
+# If config.dat exists read the configuration from it:
+
+if {[file exists config.dat]} {
+    set f [open config.dat r]
+    set descrip [gets $f]
+    close $f
+} else {
+    puts "You need to create the configuration file and save it in config.dat"
+}

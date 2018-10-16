@@ -98,7 +98,7 @@ snit::widgetadaptor ::GET::HostPrompts {
     option -dataip    -default 0.0.0.0 \
         -cgetmethod _getCoboIp   -configuremethod _setCoboIp
     option -dataservice -default 46005
-    option -eccservice   -default 46002
+    option -eccservice   -default 46003
     
     constructor args {
         installhull using ttk::frame;               # Install stuff in themed frame.
