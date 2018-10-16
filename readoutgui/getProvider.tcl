@@ -117,14 +117,17 @@ proc ::GET::start params {
     
     #  Kill off the existing get procs:
     
+    puts kill
     ::GET::killPersistentProcesses $id
     
     #  Create the ringbuffers:
     
+    puts createrings
     ::GET::createRingBuffers $id
     
     #  Start the persistent processes we need:
     
+    puts start
     ::GET::startPersistentProcesses $id
     
     #  Success - remind the user to run GetController
@@ -230,7 +233,7 @@ proc ::GET::init id {
 #  *  runsHaveTitles true
 #  *  runsHaveNumnbers true
 #
-proc::GET::capabilities {} {
+proc  GET::capabilities {} {
     return [dict create canPause false runsHaveTitles true runsHaveNumbers true]
 }
 #-------------------------------------------------------------------------------
@@ -508,7 +511,7 @@ proc ::GET::killProcess {info host pidkey pipekey processname} {
     #  Figure out the PID of the remote process
     
     set pidList [::RemoteUtil::remotePid $host $processname]
-    foreach pid $pidlist {
+    foreach pid $pidList {
         RemoteUtil::kill $host $pid
     }
 }
@@ -639,7 +642,7 @@ proc ::GET::checkProcess {command host} {
 # @param name - name of the ring buffer being created.
 #
 proc ::GET::makeRing {host name} {
-    set program [file join $daqbin  ringbufer]
+    set program [file join $::GET::daqbin  ringbufer]
     set command [list $program create $name]
     ssh::ssh $host $command;    # Errors caught in ssh::ssh.
 }

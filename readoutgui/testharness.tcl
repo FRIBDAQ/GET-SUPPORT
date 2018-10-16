@@ -19,7 +19,7 @@ exec tclsh "$0" ${1+"$@"}
 #	     East Lansing, MI 48824-1321
 
 package provide GETTestHarness 1.0
-package provie ReadoutGUIPanel 1.0;     # Yeah double but ...
+package provide ReadoutGUIPanel 1.0;     # Yeah double but ...
 ##
 # @file testharness.tcl
 # @brief Test harness to allow testing outside of full ReadoutGui.
@@ -34,8 +34,22 @@ package provie ReadoutGUIPanel 1.0;     # Yeah double but ...
 # Stub for logging.  Just log to terminal
 
 
-namepace eval ReadoutGUIPanel {}
+namespace eval ReadoutGUIPanel {}
 proc ReadoutGUIPanel::log {from sev data} {
     puts "[clock format [clock seconds]] - $from $sev $data"
 }
+
+proc stripdict dict {
+    set result [dict create]
+    dict for {key value} $dict {
+        dict set result $key [lindex $value 2]
+
+    }
+    return $result
+}
+
+source utilities.tcl
+source getPrompt.tcl
+source getProvider.tcl
+
 
