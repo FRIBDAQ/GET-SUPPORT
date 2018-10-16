@@ -53,6 +53,10 @@ namespace eval GET {
         spdaq [list {Host that is connected to GET uTCA crate}] \
         eccip [list {IP address on private subnet of ecc server}] \
         dataip    [list {IP Address on the private subnet of the data flow service}]    \
+        controlip [list {Ip Address of router control port}] \
+        controlservice [list {Service number of router control port}] \
+        coboip      [list {CoBo IP address}]                          \
+        coboservice [list {CoBo control port}] \
         dataservice [list {Service number for the data flow service}] \
         eccservice [list {Service on which the ecc server listens for requests}] \
         datauri     [list {URI of ring into which GET frames are put as ring items}] \
@@ -72,98 +76,51 @@ array set ::GET::optionlookup [list                                      \
     datauri -datauri stateuri -stateuri outputring -outputring           \
     timestampsource -timestampsource sourceid -sourceid                   \
     dataip -dataip dataservice -dataservice                                 \
+    controlip -controlip controlservice -controlservice                      \
+    coboip -coboip coboservice -coboservice                              \
 ]
-##
-#   GET parameters are into three parts divided:
-#     * host parameters - IP addresses and DNSnames along with service ports.
-#     * Ring buffer parameters.
-#     * Miscellaneous parameters.
-#
-#  Each of these gets its own megawidget to prompt for its parameters.
-#
 
 ##
-# Get::HostPrompts
+# GET::Service
+#    Prompts for a dotted IP address and service number.
 #
-#  Prompt for host parameters we need:
-#   -   spdaq dns name - public network name of the GET interface host.
-#   -   Get network IP - Private IP address of the GET interface host.
-#   -   Data service (defaults to 46005)
 #
-
-snit::widgetadaptor ::GET::HostPrompts {
-    option -spdaq     -default localhost 
-    option -eccip -default 0.0.0.0 \
-        -cgetmethod _getPrivateIp -configuremethod _setPrivateIp
-    option -dataip    -default 0.0.0.0 \
-        -cgetmethod _getCoboIp   -configuremethod _setCoboIp
-    option -dataservice -default 46005
-    option -eccservice   -default 46003
+snit::widgetadaptor ::GET::Service {
+    option -service -default 0
+    option -ip      -default 0.0.0.0 -configuremethod _setIp -cgetmethod _getIp
     
     constructor args {
-        installhull using ttk::frame;               # Install stuff in themed frame.
+        installhull using ttk::frame
         
-        ttk::label $win.publiclabel -text "Public IP DNS name"
-        ttk::entry $win.publicip    -textvariable [myvar options(-spdaq)] -width 25
+        set widgetlist [list]
+        foreach octet {1 2 3 4} delim {. . . :} {
+            $self _createOctet $win.octet$octet
+            label $win.delim$octet -text $delim
+            $win.octet$octet insert end 0
+            lappend widgetlist $win.octet$octet $win.delim$octet
+        }
         
-        ttk::label $win.privateiplabel -text "Private IP:service for eccserver"
-        $self _createOctet $win.octet1
-        ttk::label $win.octet1delim  -text . 
-        $self _createOctet $win.octet2 
-        ttk::label $win.octet2delim  -text .
-        $self _createOctet $win.octet3 
-        ttk::label $win.octet3delim  -text .
-        $self _createOctet $win.octet4
+        # The service:
         
-        ttk::label $win.servicedelim -text :
-        ttk::entry $win.dataservice -textvariable [myvar options(-eccservice)] -width 6
+        entry $win.service -textvariable [myvar options(-service)] -width 6
+        bind $win.octet4 <colon> [list after 100 [mymethod _focusService]]
         
-        ttk::label $win.coboiplabel -text "Private IP:sevice for dataflow"
-        $self _createOctet $win.coctet1
-        ttk::label $win.coctet1delim  -text . 
-        $self _createOctet $win.coctet2 
-        ttk::label $win.coctet2delim  -text .
-        $self _createOctet $win.coctet3 
-        ttk::label $win.coctet3delim  -text .
-        $self _createOctet $win.coctet4
-    
-        ttk::label $win.cservicedelim -text :
-        ttk::entry $win.cservice -textvariable [myvar options(-dataservice)] -width 6
-             
-        $self configurelist $args
-        
-        # Layout the widgets.
-        
-        grid $win.publiclabel
-        grid $win.publicip -row 0 -column 1 -columnspan 9
-        
-        grid $win.privateiplabel $win.octet1 $win.octet1delim                      \
-            $win.octet2 $win.octet2delim $win.octet3 $win.octet3delim $win.octet4 \
-            $win.servicedelim $win.dataservice
-        
-
-        grid $win.coboiplabel $win.coctet1 $win.coctet1delim                      \
-            $win.coctet2 $win.coctet2delim $win.coctet3 $win.coctet3delim   \
-            $win.coctet4 $win.cservicedelim $win.cservice
-        
-        
-        $self configure -eccip $options(-eccip);   #load the entry.
-        $self configure -dataip $options(-dataip)
+        grid {*}$widgetlist $win.service 
     }
-    #--------------------------------------------------------------------------
-    # Private methods:
-    
-    ##
+    #
     # _createOctet
     #   Creates an entry for octests.
     #    @param w - window path.
     #    @return win
     #
     method _createOctet w {
-        return [ttk::entry $w                                              \
+        set w [ttk::entry $w                                              \
             -width 3 -validate focus                                       \
             -validatecommand [mymethod _isOctet %W]                        \
         ]
+        bind $w <period> [list after 100 [mymethod _focusnext $w]]
+        
+        return $w
     }
     ##
     # _validOctet
@@ -200,96 +157,168 @@ snit::widgetadaptor ::GET::HostPrompts {
 
         return $result
     }
-    
-    #stubs.
-    
     ##
-    # Combines the private IP octet entries into a single dotted IP value.
+    # _focusnext
+    #    Transfer focus to the next octet in the IP.  IF we're at the last
+    #    one leave it there.  This is bound to the .
+    #    note that we need to remove the period from the entry.
     #
-    # @param option name - ignored.
-    # @return private IP gotten from the octet entries.
+    # @param w - widget currently having focus.
     #
-    method _getPrivateIp {optname} {
-        set octets [list]
-        foreach window [list $win.octet1 $win.octet2 $win.octet3 $win.octet4] {
-            lappend octets [$window get]
-        }
-        return [join $octets .]
-    }
-    ##
-    # _setPrivateIp
-    #
-    #    Configure method for the private ip.
-    #  @param optname - name of the option (ignored).
-    #  @param value   - new dotted ip.
-    #
-    method _setPrivateIp {optname value} {
-        set octets [split $value .]
-        if {[llength $octets] != 4} {
-            error "$value is not a valid numeric IP address - must have 4 octets."
-        }
-        #
-        # validate
-        #
-        foreach octet $octets {
-            if {![_validOctet $octet]} {
-                error "$octet is not a valid IP octet in $value"
-            }
-        }
-        #  set
+    method _focusnext w {
         
-        foreach octet $octets                    \
-            window [list $win.octet1 $win.octet2 $win.octet3 $win.octet4] {
-            
-            $window delete 0 end
-            $window insert end $octet
+        set s [$w get]
+        set i [expr {[string length $s] - 1}]
+        $w delete $i;           # removes the .
+
+    
+        set octetNum [string index $w end]
+        incr octetNum
+        if {$octetNum <= 4} {
+            set nextw [string replace $w end end $octetNum]
+            focus $nextw
         }
     }
+    
     ##
-    # _getCoboIp
-    #    Figure out the cobo IP address from its octetst.
+    # _focusService
+    #   Removes the last character from the last octet entry and
+    #   focuses on $win.service
     #
-    # @param optname - option name (ignored).
-    # @return string - dotted IP address of the cobo.
-    #
-    method _getCoboIp optname {
-        set octets [list]
-        foreach window [list $win.coctet1 $win.coctet2 $win.coctet3 $win.coctet4] {
-            lappend octets [$window get]
-        }
-        return [join $octets .]        
+    method _focusService {} {
+        set s [$win.octet4 get]
+        set i [expr {[string length $s] - 1}]
+        $win.octet4 delete $i;           # removes the .
+
+        focus $win.service
     }
+    
     ##
-    # _setCoboIp
-    #    Validate a proposed cobo IP and, if it's any good, load it into the
-    #    octet entries.
+    # _setIp
+    #     Called to configure the IP address.
+    #     Throws an error if the proposed IP is not valid.
     #
-    # @param optname - option name being configured (ignored).
-    # @param value   - proposed new dotted IP address.
+    #  @param optname - name of the option being processed (not used).
+    #  @param value   - proposed new value.
     #
-    method _setCoboIp {optname value} {
+    method _setIp {optname value} {
         set octets [split $value .]
-        if {[llength $octets] != 4} {
-            error "$value is not a valid numeric IP address - must have 4 octets."
+        if {[llength $octets] ne 4} {
+            error "$value is not a valid IP address"
         }
-        # Validate:
+        # validate them all first.
         
         foreach octet $octets {
             if {![_validOctet $octet]} {
-                error "$octet is not a valid octet in $value"
+                error "$value is not a valid IP address"
             }
         }
+        #  Set the text entries:
         
-        # Set
-        
-        foreach octet $octets                    \
-            window [list $win.coctet1 $win.coctet2 $win.coctet3 $win.coctet4] {
-            
-            $window delete 0 end
-            $window insert end $octet
-        }        
+        foreach octet $octets       \
+            w [list $win.octet1 $win.octet2 $win.octet3 $win.octet4] {
+            $w delete 0 end
+            $w insert end $octet
+        }
     }
+    ##
+    # _getIp
+    #    build the IP address from the four text entry fields.
+    #
+    # @param optname - name of the option being fetched (ignored).
+    #
+    method _getIp optname {
+        set octetList [list]
+        foreach w [list $win.octet1 $win.octet2 $win.octet3 $win.octet4]  {
+            lappend octetList [$w get]
+        }
+        return [join $octetList .]
+    }
+    
+
+}
+
+##
+#   GET parameters are into three parts divided:
+#     * host parameters - IP addresses and DNSnames along with service ports.
+#     * Ring buffer parameters.
+#     * Miscellaneous parameters.
+#
+#  Each of these gets its own megawidget to prompt for its parameters.
+#
+
+##
+# Get::HostPrompts
+#
+#  Prompt for host parameters we need:
+#   -   spdaq dns name - public network name of the GET interface host.
+#   -   Get network IP - Private IP address of the GET interface host.
+#   -   Data service (defaults to 46005)
+#
+
+snit::widgetadaptor ::GET::HostPrompts {
+    component eccservice
+    component controlservice
+    component dataservice
+    component coboservice
+    
+    
+    option -spdaq     -default localhost
+    
+    delegate option -eccip to eccservice as -ip
+    delegate option -eccservice to eccservice as -service
+    
+    delegate option -controlip to controlservice as -ip
+    delegate option -controlservice to controlservice as -service
+    
+    delegate option -dataip to dataservice as -ip
+    delegate option -dataservice to dataservice as -service
+    
+    delegate option -coboip to coboservice as -ip
+    delegate option -coboservice to coboservice as -service
+
+#    option -dataservice -default 46005
+# (controlservice    option -eccservice   -default 46003
+    
+    constructor args {
+        installhull using ttk::frame;               # Install stuff in themed frame.
         
+        ttk::label $win.publiclabel -text "Public IP DNS name"
+        ttk::entry $win.publicip    -textvariable [myvar options(-spdaq)] -width 25
+        
+        ttk::label $win.ecclabel -text "getEccServer"
+        install eccservice using GET::Service $win.eccservice
+        
+        ttk::label $win.ctllabel -text "Data router control"
+        install controlservice using GET::Service $win.controlservive
+        
+        ttk::label $win.datalabel -text "Data router data"
+        install dataservice using GET::Service $win.dataservice
+        
+        ttk::label $win.cobolabel -text "Cobo target service"
+        install coboservice using GET::Service $win.coboservice
+        
+        ##
+        #  Lay stuff out.
+        
+        grid $win.publiclabel $win.publicip
+        grid $win.ecclabel $eccservice
+        grid $win.ctllabel  $controlservice
+        grid $win.datalabel $dataservice
+        grid $win.cobolabel $coboservice
+        
+        
+        # Set defaults for service numbers.
+        
+        $self configure -eccservice 46002
+        $self configure -coboservice 46001
+        $self configure -controlservice 46003
+        $self configure -dataservice 46005
+        
+        # Configure optinos supplied.
+        
+        $self configurelist $args
+    }
 }
 
 ##
@@ -497,6 +526,11 @@ snit::widgetadaptor ::GET::GetPromptForm {
     delegate option -eccservice   to networkParameters
     delegate option -dataip    to networkParameters
     delegate option -dataservice  to networkParameters
+    delegate option -controlip  to networkParameters
+    delegate option -controlservice to networkParameters
+    delegate option -coboip     to networkParameters
+    
+    #
     
     # Make the ring buffer parameter options visible:
     
