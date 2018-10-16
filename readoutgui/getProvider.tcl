@@ -36,7 +36,7 @@ package require RemoteUtilities
 #
 
 namespace eval ::GET {
-    variable getBinDir    [file join usr opt GET bin]
+    variable getBinDir    [file join /usr opt GET bin]
     variable daqbin       $::env(DAQBIN)
     
     
@@ -571,7 +571,7 @@ proc ::GET::startNsclRouter params {
     set dataip [dict get $params dataip]
     set datasvc [dict get $params dataservice]
     
-    set ringname [::GET::ringName [dict get $params datauri]]
+    set ringname [::GET::ringname [dict get $params datauri]]
     set srcid    [dict get $params sourceid]
     set tsSrc    [dict get $params timestampsource]
     
@@ -603,7 +603,7 @@ proc ::GET::startNsclRouter params {
 # @note - The ring merge program is run in the host the script is running int.
 #
 #            
-proc ::GET::startRingmerge params {
+proc ::GET::startRingMerge params {
     set ourHost [exec hostname]
     set dataring  [dict get $params datauri]
     set statering [dict get $params stateuri]

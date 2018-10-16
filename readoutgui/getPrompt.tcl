@@ -97,7 +97,7 @@ snit::widgetadaptor ::GET::HostPrompts {
         -cgetmethod _getPrivateIp -configuremethod _setPrivateIp
     option -dataip    -default 0.0.0.0 \
         -cgetmethod _getCoboIp   -configuremethod _setCoboIp
-    option -dataservice -default 46001
+    option -dataservice -default 46005
     option -eccservice   -default 46002
     
     constructor args {
