@@ -17,6 +17,8 @@ CXXLDFLAGS=$(NSCLDAQ_LDFLAGS)
 CPPUNITLDFLAGS=-lcppunit
 
 
+all: insertstatechange
+
 insertstatechange: statechange.h insertstatechange.o statechange.o
 	$(CXX) -o insertstatechange insertstatechange.o statechange.o $(CXXLDFLAGS)
 
@@ -31,3 +33,5 @@ statechange.o: statechange.ggo
 clean:
 	rm -f *.o statechange.h statechange.c
 
+install: all
+	install insertstatechange $(PREFIX)/bin

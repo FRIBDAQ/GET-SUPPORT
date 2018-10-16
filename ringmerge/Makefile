@@ -35,6 +35,9 @@ clean:
 	rm -f *.o ringmerge.h ringmerge.h ringmerge.c ringmerge
 	rm -f unittests
 
+install: all
+	install ringmerge $(PREFIX)/bin
+
 
 tests: unittests ringmerge
 	./unittests

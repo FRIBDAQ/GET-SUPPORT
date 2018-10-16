@@ -31,3 +31,7 @@ daqstop: daqstop.o EccClient.o
 clean:
 	rm -f *.o daqstart daqstop
 
+
+install: all
+	install daqstart  $(PREFIX)/bin
+	install daqstop   $(PREFIX)/bin

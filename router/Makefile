@@ -19,6 +19,8 @@ LDFLAGS=-L$(GET)/lib -lgetbench-daq -lmdaq-daq -lMultiFrame  -lmdaq-utl \
 	$(ICE_LIBS)	\
 	-Wl,-rpath=$(GET)/lib -g
 
+all: nscldatarouter
+
 nscldatarouter: dataRouterMain.o DataRouter.o datarouterargs.o NSCLDAQDataProcessor.o
 	$(CXX) -o nscldatarouter \
 		dataRouterMain.o \
@@ -26,6 +28,9 @@ nscldatarouter: dataRouterMain.o DataRouter.o datarouterargs.o NSCLDAQDataProces
 		NSCLDAQDataProcessor.o \
 		datarouterargs.o  \
 		$(LDFLAGS)
+
+install: all
+	install nscldatarouter $(PREFIX)/bin
 
 dataRouterMain.o: DataRouter.cpp datarouterargs.o
 
