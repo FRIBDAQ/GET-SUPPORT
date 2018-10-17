@@ -132,7 +132,7 @@ main(int argc, char** argv)
 
   client.connectNode(cobo);
   
-  // @todo - this should be conditional -- only on a pusler run:
+  // We can stop it just fine if it was never started.
 
   client.ecc()->stopAsAdPeriodicPulser();
   
