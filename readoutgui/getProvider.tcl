@@ -376,7 +376,7 @@ proc ::GET::emitBegin {id num title} {
     set command [list \
         $path --ring=$statering --run=$num --title="$title" --source-id=$sourceid \
 		    --type=begin]
-    puts "Emitting begin run with '$command' on $statehost
+    puts "Emitting begin run with '$command' on $statehost"
     ssh::ssh $statehost [list \
         $path --ring=$statering --run=$num --title="$title" --source-id=$sourceid \
         --type=begin]
@@ -401,7 +401,7 @@ proc ::GET::changeAcquisitionState {params program} {
     set cobosvc [dict get $params coboservice]
     set arg1 $coboip:$cobosvc
     
-    set ecchost [dict get $params privateip]
+    set ecchost [dict get $params eccip]
     set eccsvc [dcit get $params eccservice]
     set args $ecchost:$eccsvc
     
@@ -418,7 +418,7 @@ proc ::GET::changeAcquisitionState {params program} {
 #    on its way through the system...at least has been seen by the merge program.
 #
 # @param params - data source parameterization.
-#                 We need the coboip, coboservice the spdaq and privateip and
+#                 We need the coboip, coboservice the spdaq and eccip and
 #                 eccservice
 #                 
 proc ::GET::startAcquisition params {
