@@ -28,7 +28,36 @@
             <p><b>spdaq</b> - The DNS name of the GET spdaq on the daq network.</p>
         </li>
         <li>
-            <p><b>getIP</b> - The private IP of the spdaq on the GET netework.</p>
+            <p><b>getEccServer</b> The ip address and service the getEccServer
+            listens to for connections.  The IP address should be the address
+            of the spdaq system on the local 10Gbit subnet.
+            Normally the service number will be 46002
+            </p>
+        </li>
+        <li>
+            <p><b>Data router control</b> The ip addresss and service the
+            nscldatarouter program will listen on for control connections.
+            The IP address normally should be the address of the spdaq system
+            on the local 10Gbit subnet.  The service number is normally  46003
+            </p>
+        </li>
+        <li>
+            <p>
+                <b>Data Router data</b>  The IP address and service the
+                nscldatarouter program will listen on for data connnections.
+                The IP address normally should be the address of the spdaq system
+            on the local 10Gbit subnet.  The service number is normally  46005
+            </p>
+        </li>
+        <li>
+            <p>
+                <b>CoBo target service</b> this is the IP address of the
+                CoBo board from which we're going to get data along with the
+                service on which it listens for data connections.  The
+                IP address will depend on the board (see the /etc/dhcp/dhcpd.conf)
+                file in the spdaq for a list of possible CoBos.  The
+                service number should nomrally be 46001
+            </p>
         </li>
     </ul>
     <h2>Ring buffer parameters.</h2>
