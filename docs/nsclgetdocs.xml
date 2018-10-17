@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+                      "file:///usr/share/xml/docbook/schema/dtd/4.5/docbookx.dtd
+"
+>
+<book>
+    <bookinfo>
+      <title>NSCL GET interface software</title>
+      <author><firstname>Ron</firstname><surname>Fox</surname></author>
+      <revhistory>
+          <revision>
+             <revnumber>0.1</revnumber>
+             <date>October 17, 2018</date>
+             <authorinitials>RF</authorinitials>
+             <revremark>Original Release</revremark>
+          </revision>
+      </revhistory>
+    </bookinfo>
+<chapter>
+   <title>Introduction</title>
+   <para>
+    This document describes how to use the interface software that allows
+    single CoBo GET systems to interface to the NSCL data acquisition system.
+    The document is organized as follows:
+   </para>
+   <orderedlist>
+    <listitem>
+        <para>
+            <link linkend='ch.quickstart' endterm='ch.quickstart.title' />
+            Provides a quick start cookbook for adding the S800 GET CRDC data
+            source to an experiment.
+        </para>
+    </listitem>
+    <listitem>
+        <para>
+            <link linkend='ch.theory' endterm='ch.theory.title' />
+            Provides an orientation to GET and how it is interfaced to
+            the NSCLDAQ.
+        </para>
+    </listitem>
+    <listitem>
+        <para>
+            <link linkend='ch.components' endterm='ch.components.title' />
+            describes each component used to interface GET to the NSCLDAQ and
+            provides reference manual pages for them.
+        </para>
+    </listitem>
+   </orderedlist>
+</chapter>
+<chapter id='ch.quickstart'>
+   <title id='ch.quickstart.title'>S800 Quickstart</title>
+   <para>
+    This chapter is a quick start guide that shows how to add the GET electronics
+    for the s800 CRDC to an NSCLDAQ experiment setup.  Note that this is a
+    step by step cookbook intended to get you going quickly.
+    As a result there is little to no explanation of the steps.  To
+    <emphasis>understand</emphasis> what's going on, you'll need to
+    look at <link linkend='ch.theory' endterm='ch.theory.title' />.
+   </para>
+   <procedure>
+    <step>
+        <title>Add the GET provider to the ReadoutGui</title>
+        <para>
+            Edit the ReadoutCallouts.tcl for your experiment and
+            add the following lines to the top of it:
+        </para>
+        <informalexample>
+            <programlisting>
+lappend auto_path $GETTclLibs
+
+package require GET_Prompter
+package require GET_Provider
+package require ReadoutGUIPanel
+                
+            </programlisting>
+        </informalexample>
+        <para>
+            In the code below, substitute the actual TclLibs directory for the
+            NSCL Get interface installation for <literal>$GETTclLibs</literal>
+            for example.  If you are using the NSCL Get Interface installed
+            in /usr/opt/NSCLGET this line becomes:
+        </para>
+        <informalexample>
+            <programlisting>
+lappend auto_path /usr/opt/NSCLGET/TclLibs
+            </programlisting>
+        </informalexample>
+    </step>
+    <step>
+       <title>Run the NSCLDAQ Readout Shell.</title>
+       <para>
+        This step assumes you've run a daqsetup.bash script to source
+        the NSCLDAQ environment variables into your shell.  Note that the
+        GET interface software assumes you've done that as well.
+       </para>
+       <informalexample>
+        <programlisting>
+$DAQBIN/ReadoutShell            
+        </programlisting>
+       </informalexample>
+       <para>
+        We're also assuming your current working directory is the same as the
+        directory holding your <filename>ReadoutCallouts.tcl</filename> script
+        or that you've put that script in <filename>~/stagearea/experiment/current</filename>
+       </para>
+    </step>
+    <step>
+        <title>Add the S800 CRDC GET data source to your experiment</title>
+         <para>
+            First click the <literal>Data Source</literal> menu and select
+            <guibutton>Add...</guibutton>
+         </para>
+         <para>
+            The Data source type selection dialog then appears.  The data source
+            types are alphabetized.  Note that at this point in time the
+            second from the top data source type is <literal>GET</literal>.
+            Select that and click <guibutton>Ok</guibutton>
+         </para>
+         <para>
+            Fill in the Network parameters as follows:
+         </para>
+         <variablelist>
+            <varlistentry>
+                <term>Public IP DNS Name</term>
+                <listitem>
+                    <para>
+                        <literal>spdaq08.nscl.msu.edu</literal>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>getEccServer</term>
+                <listitem>
+                    <para>
+                        <literal>10.50.200.2:46002</literal>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Data router Control</term>
+                <listitem>
+                    <para>
+                        <literal>10.50.200.2:46003</literal>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Data router data</term>
+                <listitem>
+                    <para>
+                        <literal>10.50.200.2:45005</literal>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Cobo target service</term>
+                <listitem>
+                    <para>
+                        <literal>
+                            10.50.100.2:46001
+                        </literal>
+                        <para>
+                            Note the 100 above is not a typeo.  This is a
+                            different IP address from the others.
+                        </para>
+                    </para>
+                </listitem>
+            </varlistentry>
+         </variablelist>
+         <para>
+            Fill in the ringbuffer parameters as follows:
+         </para>
+         <variablelist>
+            <varlistentry>
+                <term>URI OF GET data ring</term>
+                <listitem>
+                    <para>
+                        <literal>tcp://spdaq08/getdata</literal>
+                    </para>
+                    <para>
+                        This is the ringbuffer into which GET frames will be
+                        written.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>URI of Begin/End run rings</term>
+                <listitem>
+                    <para>
+                        <literal>tcp://spdaq08/statechange</literal>
+                    </para>
+                    <para>
+                        This is the ring buffer in which the state change
+                        ring items (begin run/end run) will be put.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Name of final data ring (in localhost)</term>
+                <listitem>
+                    <para>
+                        GET
+                    </para>
+                    <para>
+                        This ring buffer will
+                    </para>
+                </listitem>
+            </varlistentry>
+         </variablelist>
+         <para>
+            In Miscellaneous parameters, leave the timestamp source as timestamp
+            and select a sourceid of 20.
+         </para>
+         <para>
+            Click <guibutton>Ok</guibutton>.
+         </para>
+    </step>
+   </procedure>
+</chapter>
+<chapter id='ch.theory'>
+   <title id='ch.theory.title'>How this all works</title>
+   <para>
+   </para>
+</chapter>
+<chapter id='ch.components'>
+   <title id='ch.components.title'>Interface components.</title>
+   <para>
+   </para>
+</chapter>
+</book>
+
