@@ -576,7 +576,10 @@ snit::widgetadaptor ::GET::GetPromptForm {
 #   Displays the help in an iwidgets help widget.
 #
 proc ::GET::showHelp {} {
-    if {[winfo exists .gethelp] eq ""} {
+    puts "Showhelp"
+    if {![winfo exists .gethelp]} {
+	puts "Instantiate, helpdir $::GET::installedIn"
+	puts "[glob $::GET::installedIn/*.html]"
         iwidgets::hyperhelp .gethelp \
             -topics index -helpdir $::GET::installedIn
         
@@ -599,13 +602,21 @@ proc GET::promptParameters {} {
     toplevel .getparamtoplevel
     set dlg [DialogWrapper .getparamtoplevel.dialog]
     set container [$dlg controlarea]
+
+    set frame [ttk::frame $container.frame]
+    set form [GET::GetPromptForm $frame.f]
+    button $frame.help -text Help -command ::GET::showHelp
+    grid $form -sticky nsew
+    grid $frame.help -sticky w
+
     
-    set form [GET::GetPromptForm $container.f]
-    $dlg configure -form $form
+    $dlg configure -form $frame
+
+
+    
     pack $dlg -fill both -expand 1
     
-    button .getparamtoplevel.help -text Help -command ::GET::showHelp
-    pack .getparamtoplevel.help
+
     
     set result [$dlg modal]
     set paramdict [dict create]
