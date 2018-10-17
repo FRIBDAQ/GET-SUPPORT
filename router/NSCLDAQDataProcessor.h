@@ -62,6 +62,11 @@ public:
     std::string getRingBufferName() const;
     unsigned    getSourceId()       const;
     bool        usingTimestamp()    const;
+
+    // This is just done to disable the debugging log
+    // message from each frame header:
+
+    void processHeader(const mfm::PrimaryHeader& header) {}
     
     // Forbidden canonicals:
 private:
