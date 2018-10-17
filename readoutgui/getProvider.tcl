@@ -117,17 +117,14 @@ proc ::GET::start params {
     
     #  Kill off the existing get procs:
     
-    puts kill
     ::GET::killPersistentProcesses $id
     
     #  Create the ringbuffers:
     
-    puts createrings
     ::GET::createRingBuffers $id
     
     #  Start the persistent processes we need:
     
-    puts start
     ::GET::startPersistentProcesses $id
     
     #  Success - remind the user to run GetController
@@ -277,9 +274,11 @@ proc ::GET::killPersistentProcesses id {
     # Now do the kills.
     
     ::GET::killProcess $info $gethost geteccserver eccserveroutput getEccServer
-    ::GET::killProcess $info $routerhost nsclrouter routeroutput   nscldatarouter
+    ::GET::killProcess $info $routerhost \
+	nsclrouter routeroutput   nscldatarouter
     ::GET::killProcess $info $thishost   ringmerge  mergeout       ringmerge
-    
+
+    after 1000;     # Wait for them to die.
 }
 
 
@@ -305,6 +304,8 @@ proc ::GET::startPersistentProcesses id {
     dict set info ringmerge [lindex $result 0] mergeout [lindex $result 1]
     
     set ::GET::activeProviders($id) $info;            # Update the dict.
+
+    after 5000;                                    # Wait for the start
 }
 ##
 # GET::checkPersistentProcesses
@@ -376,7 +377,7 @@ proc ::GET::emitBegin {id num title} {
 	--source-id=$sourceid \
         --type=begin"
     
-    ReadoutGUIPanel::log GET info [ssh::ssh $statehost $command]
+    ReadoutGUIPanel::Log GET log [ssh::ssh $statehost $command]
     
     # If that worked we can update the sources dict:
     
@@ -439,7 +440,6 @@ proc ::GET::stopAcquisition params {
 #
 proc ::GET::emitEndRun state {
 
-    puts "State at end run $state"
     
     set params [dict get $state parameterization]
     
@@ -452,7 +452,7 @@ proc ::GET::emitEndRun state {
 
     set path [file join $::GET::getNsclDaqBindir insertstatechange]
     
-    ReadoutGUIPanel::log GET info [ssh::ssh $statehost "$path --ring=$statering \
+    ReadoutGUIPanel::Log GET log [ssh::ssh $statehost "$path --ring=$statering \
        --run=$num --title=\"$title\" --source-id=$sourceid \
 	--type=end --offset $duration"    ]
 
@@ -504,6 +504,7 @@ proc ::GET::ringname uri {
 #         we wanted to do we can't acutally do.
 #
 proc ::GET::killProcess {info host pidkey pipekey processname} {
+    puts "Killing $processname"
     if {[dict exists $info $pipekey]} {
         # The pipe fd can be closed:
         
@@ -514,7 +515,9 @@ proc ::GET::killProcess {info host pidkey pipekey processname} {
     #  Figure out the PID of the remote process
     
     set pidList [::RemoteUtil::remotePid $host $processname]
+#    puts "Pid list: '$pidList'"
     foreach pid $pidList {
+	puts "Killing $pid in $host ($processname)"
         RemoteUtil::kill $host $pid
     }
 }
@@ -538,7 +541,6 @@ proc ::GET::startEccServer params {
     set host [dict get $params spdaq]
     set command [file join $::GET::getBinDir getEccServer]
 
-    puts "***** Starting eccserver: '$command' in $host"
     
     set info [ssh::sshpid $host $command]
     
@@ -638,8 +640,11 @@ proc ::GET::startRingMerge params {
 #
 proc ::GET::checkProcess {command host} {
     set pids [::RemoteUtil::remotePid  $host $command]
-    
-    return [expr {[llength $pids] > 0}]
+    set result [expr {[llength $pids] > 0}]
+    if {!$result} {
+	puts "Failed to find $command in $host: $pids : $result"
+    }
+    return $result
 }
 ##
 # ::GET::makeRing
@@ -678,6 +683,7 @@ proc ::GET::handleOutput {fd} {
         fileevent $fd readable ""
     } else {
         set line [gets $fd]
-        ReadoutGUIPanel::log GET info $line       
+        ReadoutGUIPanel::Log GET log $line       
     }
 }
+

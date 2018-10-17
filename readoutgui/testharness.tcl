@@ -35,7 +35,7 @@ package provide ReadoutGUIPanel 1.0;     # Yeah double but ...
 
 
 namespace eval ReadoutGUIPanel {}
-proc ReadoutGUIPanel::log {from sev data} {
+proc ReadoutGUIPanel::Log {from sev data} {
     puts "[clock format [clock seconds]] - $from $sev $data"
 }
 

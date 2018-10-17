@@ -59,10 +59,10 @@ proc RemoteUtil::remotePid {host command} {
     
     set result [list]
     foreach process $processes {
-        puts $process
         set user [lindex $process 0]
+	set proc [file tail [lindex $process 1]]
         set pid [lindex $process end]
-        if {$user eq $::RemoteUtil::myUserName} {
+        if {($user eq $::RemoteUtil::myUserName)} {
             lappend result $pid
         }
     }
