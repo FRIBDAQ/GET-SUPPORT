@@ -25,19 +25,34 @@ exec tclsh "$0" ${1+"$@"}
 # @author Ron Fox <fox@nscl.msu.edu>
 #
 package provide GET_Provider 1.0
+package provide GETBundle    1.0;      # Handle state transitions.
+
 package require ssh
 package require Wait
 package require ReadoutGUIPanel
 package require GET_Prompter
 package require Tk
 package require RemoteUtilities
+package require Runstatemachine
+
+# Note that when we're loaded the user interface is not quite set up
+# so add our GUI frame 1/2 second after this:
+
+after 500 {GET::SetupGui}
+
 #
 #   We have some stuff (besides code) to put in the GET namespace:
 #
 
-namespace eval ::GET {
+namespace eval ::GET {    
     variable getBinDir    [file join /usr opt GET bin]
     variable daqbin       $::env(DAQBIN)
+
+    # User interface stuff:
+    
+    variable pulserCheckbutton "";      # pulser checkbutton widget.
+    variable startPulser  0;            # Reflects the state of the pulser check
+
     
     
     ##
@@ -406,7 +421,16 @@ proc ::GET::changeAcquisitionState {params program} {
     set spdaq [dict get $params spdaq]
     set path [file join $::GET::getNsclDaqBindir $program]
     
-    ssh::ssh $spdaq [list $path $arg1 $arg2]
+    # If programs daqstart, we need to fold in the value of ::GET::startPulser
+    
+    if {$program eq "daqstart" } {
+        ReadoutGUIPanel::Log GET log \
+            [ssh::ssh $spdaq [list $path $arg1 $arg2 $::GET::startPulser]]
+    } else {
+        ReadoutGUIPanel::Log GET log [ssh::ssh $spdaq [list $path $arg1 $arg2]]
+    }
+    
+    
     
 }
 ##
@@ -687,3 +711,67 @@ proc ::GET::handleOutput {fd} {
     }
 }
 
+#------------------------------------------------------------------------------
+#
+#  User interface.
+#    We need to provide control over whether or not the pulser is started.
+#
+
+##
+# GET::SetupGui
+#
+#    Add a frame at the bottom of . that's labeled for GET and
+#    contains a checkbutton that supports enabling and disabling the
+#    ASAD/CoBo test pulser.  This must be checked when doing pulser runs
+#    or else you won't get any data.  It must be unchecked when not doing
+#    pulser runs or else the results are not known.
+#
+#   -  GET::startPulser will reflect the state of the button and
+#   -  GET::pulserCheckButton will be the widget path to the checkbutton.
+#
+
+proc GET::SetupGui {} {
+    ttk::labelframe .getcontrols -text {GET controls}
+    set ::GET::pulserCheckButton [ttk::checkbutton .getcontrols.pulser \
+        -text {Start Pulser} -onvalue 1 -offvalue 0 -variable GET::startPulser \
+    ]
+    grid $::GET::pulserCheckButton -sticky w
+    grid $.getcontrols -sticky nsew
+}
+
+
+##
+#  Now we need a bundle to ghost/unghost the pulser button.
+#
+
+proc ::GET::attach state {}
+
+proc ::GET::enter {from to} {
+    
+    if {[winfo exists $::GET::pulserCheckButton]} {
+        if {$to eq "Active"} {
+            $::GET::pulserCheckButton configure -state disabled
+        } else {
+            $::GET::pulsrCheckButton configure -state enabled
+        }
+    }
+}
+
+proc ::GET::leave {from to} {}
+
+
+#  Need to export the namespace procs and methods.
+
+namespace eval ::GET {
+    namespace export attach enter leave
+    namespace ensemble create
+}
+
+
+# need to regtister the bundle with the state machine.... if its' not already
+# registered.
+
+set GET::sm [RunstateMachineSingleton %AUTO%]
+if {"GET" ni [$::GET::sm listCalloutBundles]} {
+    $GET::sm addCalloutBundle GET    
+}
