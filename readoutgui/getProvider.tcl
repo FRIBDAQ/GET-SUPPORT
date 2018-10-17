@@ -33,7 +33,7 @@ package require ReadoutGUIPanel
 package require GET_Prompter
 package require Tk
 package require RemoteUtilities
-package require Runstatemachine
+package require RunstateMachine
 
 # Note that when we're loaded the user interface is not quite set up
 # so add our GUI frame 1/2 second after this:
@@ -736,7 +736,8 @@ proc GET::SetupGui {} {
         -text {Start Pulser} -onvalue 1 -offvalue 0 -variable GET::startPulser \
     ]
     grid $::GET::pulserCheckButton -sticky w
-    grid $.getcontrols -sticky nsew
+    grid .getcontrols -sticky nsew
+
 }
 
 
@@ -752,7 +753,7 @@ proc ::GET::enter {from to} {
         if {$to eq "Active"} {
             $::GET::pulserCheckButton configure -state disabled
         } else {
-            $::GET::pulsrCheckButton configure -state enabled
+            $::GET::pulserCheckButton configure -state enabled
         }
     }
 }
