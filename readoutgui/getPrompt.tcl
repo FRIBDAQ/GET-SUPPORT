@@ -529,6 +529,7 @@ snit::widgetadaptor ::GET::GetPromptForm {
     delegate option -controlip  to networkParameters
     delegate option -controlservice to networkParameters
     delegate option -coboip     to networkParameters
+    delegate option -coboservice to networkParameters
     
     #
     
