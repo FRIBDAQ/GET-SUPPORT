@@ -63,4 +63,13 @@ if {[file exists config.dat]} {
     close $f
 } else {
     puts "You need to create the configuration file and save it in config.dat"
+    set raw [GET::promptParameters]
+    set descrip [stripdict $raw]
+    dict set descrip sourceid 0
+    set f [open config.dat w]
+    puts $f $descrip
+    close $f
 }
+
+puts "The variable 'descrip' has the data source description dict."
+

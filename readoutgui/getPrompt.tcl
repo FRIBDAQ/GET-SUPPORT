@@ -63,7 +63,7 @@ namespace eval GET {
         stateuri    [list {URI of ring into which run state change items are put}] \
         outputring  [list {Ring name into which datauri and stateuri items are merged}] \
         timestampsource [list {Identifies what's put in to the timestamp of GET ring items}] \
-        sourceid    [list {Source Id put into body headers for this source}]   \
+        datasourceid    [list {Source Id put into body headers for this source}]   \
     ]
     #
     #  This provides a lookup table between the keys above and option names in
@@ -74,7 +74,7 @@ namespace eval GET {
 array set ::GET::optionlookup [list                                      \
     spdaq -spdaq eccip -eccip eccservice -eccservice               \
     datauri -datauri stateuri -stateuri outputring -outputring           \
-    timestampsource -timestampsource sourceid -sourceid                   \
+    timestampsource -timestampsource datasourceid -sourceid                   \
     dataip -dataip dataservice -dataservice                                 \
     controlip -controlip controlservice -controlservice                      \
     coboip -coboip coboservice -coboservice                              \

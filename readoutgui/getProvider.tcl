@@ -182,10 +182,7 @@ proc ::GET::begin {source runNum title} {
     #  Emit the begin run item:
     
     ::GET::emitBegin $source $runNum $title
-    
-    dict set state runstartime [clock seconds]
-    set ::GET::activeProviders($source) $state;      # Update state with start time
-    
+        
     ::GET::startAcquisition  [dict get $state parameterization]
     
 }
@@ -367,19 +364,19 @@ proc ::GET::emitBegin {id num title} {
     
     set statehost [::GET::ringhost [dict get $params stateuri]]
     set statering [::GET::ringname [dict get $params stateuri]]
-    set sourceid  [dict get $params sourceid]
+    set sourceid  [dict get $params datasourceid]
+    
     dict set info runstarttime [clock seconds]
     dict set info runtitle $title
     dict set info runNumber $num
-    set path [file join $::GET::getBinDir insertstatechange]
+    
+    set path [file join $::GET::getNsclDaqBindir insertstatechange]
 
-    set command [list \
-        $path --ring=$statering --run=$num --title="$title" --source-id=$sourceid \
-		    --type=begin]
-    puts "Emitting begin run with '$command' on $statehost"
-    ssh::ssh $statehost [list \
-        $path --ring=$statering --run=$num --title="$title" --source-id=$sourceid \
-        --type=begin]
+    set command "$path --ring=$statering --run=$num --title=\"$title\" \
+	--source-id=$sourceid \
+        --type=begin"
+    
+    ReadoutGUIPanel::log GET info [ssh::ssh $statehost $command]
     
     # If that worked we can update the sources dict:
     
@@ -402,11 +399,11 @@ proc ::GET::changeAcquisitionState {params program} {
     set arg1 $coboip:$cobosvc
     
     set ecchost [dict get $params eccip]
-    set eccsvc [dcit get $params eccservice]
-    set args $ecchost:$eccsvc
+    set eccsvc [dict get $params eccservice]
+    set arg2 $ecchost:$eccsvc
     
     set spdaq [dict get $params spdaq]
-    set path [file join $::GET::getBinDir $program]
+    set path [file join $::GET::getNsclDaqBindir $program]
     
     ssh::ssh $spdaq [list $path $arg1 $arg2]
     
@@ -442,20 +439,22 @@ proc ::GET::stopAcquisition params {
 #
 proc ::GET::emitEndRun state {
 
+    puts "State at end run $state"
+    
     set params [dict get $state parameterization]
     
     set statehost [::GET::ringhost [dict get $params stateuri]]
     set statering [::GET::ringname [dict get $params stateuri]]
-    set sourceid  [dict get $params sourceid]
+    set sourceid  [dict get $params datasourceid]
     set title [dict get $state runtitle]
     set num   [dict get $state runNumber]
     set duration [expr {[clock seconds] - [dict get $state runstarttime]}]
 
-    set path [file join $::GET::getBinDir insertstatechange]
+    set path [file join $::GET::getNsclDaqBindir insertstatechange]
     
-    ssh::ssh $statehost [list \
-        $path --ring=$statering --run=$num --title=$title --source-id=$sourcid \
-        --type=end --offset $duration]    
+    ReadoutGUIPanel::log GET info [ssh::ssh $statehost "$path --ring=$statering \
+       --run=$num --title=\"$title\" --source-id=$sourceid \
+	--type=end --offset $duration"    ]
 
 }
 ##
@@ -572,21 +571,22 @@ proc ::GET::startEccServer params {
 proc ::GET::startNsclRouter params {
     set host [dict get $params spdaq]
     
-    set eccip [dict get $params eccip]
-    set eccsvc [dict get $params eccservice]
+    set controlip [dict get $params controlip]
+    set controlsvc [dict get $params controlservice]
     
     set dataip [dict get $params dataip]
     set datasvc [dict get $params dataservice]
     
     set ringname [::GET::ringname [dict get $params datauri]]
-    set srcid    [dict get $params sourceid]
+    set srcid    [dict get $params datasourceid]
     set tsSrc    [dict get $params timestampsource]
     
     set program \
         [file normalize [file join $::GET::getNsclDaqBindir nscldatarouter]]
     
     set info [ssh::sshpid $host [list $program \
-        --controlservice $eccip:$eccsvc --dataservice $dataip:$datasvc        \
+	--controlservice $controlip:$controlsvc \
+	--dataservice $dataip:$datasvc        \
         --ring $ringname --id $srcid --timestamp $tsSrc --outputtype RingBuffer]]
     
     set pid [lindex $info 0]
