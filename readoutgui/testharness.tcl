@@ -20,6 +20,7 @@ exec tclsh "$0" ${1+"$@"}
 
 package provide GETTestHarness 1.0
 package provide ReadoutGUIPanel 1.0;     # Yeah double but ...
+package provide RunstateMachine 1.0;     # triple for that matter.
 ##
 # @file testharness.tcl
 # @brief Test harness to allow testing outside of full ReadoutGui.
@@ -47,6 +48,14 @@ proc stripdict dict {
     }
     return $result
 }
+#
+#  Stubs for registering state handler bundle.
+
+proc RunstateMachineSingleton a {
+    return registerbundlestub
+}
+
+proc registerbundlestub {command bundle} {}
 
 set instdir $env(PREFIX)
 
