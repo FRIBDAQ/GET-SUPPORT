@@ -24,6 +24,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <DataFormat.h>
 
 /** @file: ring2graw.cpp
  *  @brief: Filter ring items -> graw output.
@@ -67,10 +68,12 @@ int main(int argc, char** argv)
     
     CRingItem* pItem;
     while(pItem = pSource->getItem()) {
+      if (pItem->type() == PHYSICS_EVENT) {
         void* pData  = pItem->getBodyPointer();
         size_t nByte = pItem->getBodySize();
         std::cout.write(static_cast<char*>(pData), nByte);
-        delete pItem;
+      }
+      delete pItem;
     }
     
     exit(EXIT_SUCCESS);
