@@ -159,11 +159,12 @@ $DAQBIN/ReadoutShell
                         <literal>
                             10.50.100.2:46001
                         </literal>
-                        <para>
-                            Note the 100 above is not a typeo.  This is a
-                            different IP address from the others.
-                        </para>
                     </para>
+                    <para>
+                        Note the 100 above is not a typeo.  This is a
+                        different IP address from the others.
+                    </para>
+
                 </listitem>
             </varlistentry>
          </variablelist>
@@ -215,17 +216,1061 @@ $DAQBIN/ReadoutShell
             Click <guibutton>Ok</guibutton>.
          </para>
     </step>
+    <step>
+        <title>Start the data sourece</title>
+        <para>
+            Click the Readout GUI start button.  Note that when the
+            persistent processes are started, a reminder will be given to
+            run GetController to load and configure the CoBo/ASAD combination.
+        </para>
+        <para>
+            Check that there are no errors and that the data source does not
+            exit.
+        </para>
+    </step>
+    <step>
+        <title>Run GetController</title>
+        <para>
+            Run the GetController program in spdaq08 by
+            typing:
+        </para>
+        <informalexample>
+            <programlisting>
+ssh spdaq08 /usr/opt/GET/bin/GetController
+            </programlisting>
+        </informalexample>
+        <para>
+            Note that the GetController must connect to the EccServer, 
+            and sets up the communcation between all of the system parts so
+            it must be run in the spdaq that is connected to the micro-TCA
+            crate.
+        </para>
+    </step>
+    <step>
+        <title>Accept the workspace</title>
+        <para>
+            GetController organizes configurations (which it calls
+            <firstterm>tests</firstterm>) in containers called workspaces.
+            It remembers the workspace from run to run so normally, on the
+            workspace selection menu, just select <guibutton>Finish</guibutton>.
+        </para>
+    </step>
+    <step>
+        <title>Configure the data Router</title>
+        <para>
+            Be sure the data flow and control prots in this dialog match those
+            setup in the data source configuration.  Be sure as well that the
+            <literal>External</literal> router mode radio button is sselected.
+        </para>
+        <para>
+            When all values are correct, click <guibutton>Finish</guibutton>
+        </para>
+        <para>
+            If all goes well you should see the log tab of the GetController
+            screen display something like:
+        </para>
+        <informalexample>
+            <programlisting>
+== Destroying data router server...
+== Creating alarm logger with address 0.0.0.0:46012
+== Adding servant with id: AlarmLogger
+== Creating object adapter @ default -p 46012
+== STARTED server on 0.0.0.0:46012                
+            </programlisting>
+        </informalexample>
+    </step>
+    <step>
+        <title>Choose the system configuration</title>
+        <para>
+            Click the <guibutton>Open test</guibutton> button to use a pre-existing
+            Cobo/ASAD configuration.  You can then use <guibutton>Edit Test</guibutton>
+            to build a new configuration based on the exisiting one.
+            You can use the green <guibutton>C</guibutton> button next to the
+            <literal>Conditions</literal> to modify the conditions.
+        </para>
+    </step>
+    <step>
+        <title>Prepare the system for data taking</title>
+        <para>
+            First click the <guibutton>Load Hw</guibutton> button on the
+            GetController GUI. A bunch of stuff is then output to the log
+            window and stuff will also be output to the
+            GET window of the ReadoutGui reflecting the interaction of
+            the GetController with the persistsent components.
+        </para>
+        <para>
+            Once the load is done, the DataRouter should indicate that it's
+            been connected.  At thta point, click <guibutton>Configure</guibutton>
+            to complete the configuration of the CoBo/ASAD.
+        </para>
+        <para>
+            Note that if the configuration accepts test pulser data be sure
+            to check the <literal>Start Pulser</literal> checkbutton
+            on the ReadoutGUI, otherwise, this checkbutton should be unchecked.
+        </para>
+    </step>
+    <step>
+        <para>
+            At this point you should be able to start and stop runs with the ReadoutGUI.
+            You can dismiss the GetController window, or leave it up.  If you
+            decide to leave it up, to change the configuration click
+            <guibutton>Reset</guibutton> twice to enable the
+            <guibutton>Load Hw</guibutton> once more.
+        </para>
+        <para>
+            IF the CoBo/ASAD parameters are not going to be modified, it's not
+            necessary to load and configure the hardware at the beginning of each
+            run.  You can just use the <guibutton>Begin</guibutton> and
+            <guibutton>End</guibutton> buttons to control the system.
+        </para>
+        <para>
+            Note that the GUI won't have a Pause/Resume button as pausing GET
+            runs is not supported in this version of the software.
+        </para>
+    </step>
    </procedure>
 </chapter>
 <chapter id='ch.theory'>
    <title id='ch.theory.title'>How this all works</title>
-   <para>
-   </para>
+   <section>
+    <title>The Private subnet, services and servers.</title>
+        <para>
+         This chapter describes the structure and theory behind the data source
+         and how to set it up.  The intended audience for this chapter are people
+         needing to derive new instances of the data source (other than those
+         described by <link linkend='ch.quickstart' endterm='ch.quickstart.title' />
+         and any other cookbook like documents that might be produced for established
+         GET systems.
+        </para>
+        <para>
+         Before starting it's important to note the intent and resulting limitations
+         of this data source.  The data source is intended to take data from a
+         single CoBo that is not controlled by a MUTANT trigger module.
+         Mutiple CoBos can each have their own data source, but this data source
+         does not adress sychronization with other data sources (GET or otherwise).
+        </para>
+        <para>
+         CoBo boards live in a microTCA backplane.  These backplanes are not actually
+         bussed systems but instead, implement a set of networks in a box where the
+         MicroTca Carrier Hub (MCH) card supplies the interconnectivity between
+         connections (slots) on those networks and the connectivity between slots and
+         between the crate and the outside world.
+        </para>
+        <para>
+         CoBo boards and the MCH selected for GET implement a 10Gbit switched
+         ethernet on the backplane of the microTCA crate.  The MCH supplies a network
+         switch which includes two fibre ports that provide connectivity between
+         the microTCA backplane network and the world outside the backplane.
+        </para>
+        <para>
+         In fact the CoBo board implements a 1Gbit ethernet and its port on the MCH switch
+         is auto negotiated down to that bandwidth.  The important point to note, therefore
+         is that each CoBo board in a microTCA crate has an IP address.  The CoBo
+         private subnet is configured to be 10.50.100.*.   Each CoBo obtains its IP
+         address by making DHCP requests to the server (spdaq) system that's
+         connected to the MCH's fiber optic ports.  The
+         file <filename>/etc/dhcp/dhcpd.conf</filename> describes the correspondence
+         between CoBo physical addresses and the IP addresses they are
+         assigned.  The CoBo advertises a service number 46001 on this IP.  The
+         configuration for a CoBo for GetController includes the IP and port of this
+         service.
+        </para>
+        <para>
+         The NSCLDAQ data provider for GET hardware, makes use of as much of the
+         GET support software as possible.   This means that the slow control for
+         CoBo modules is done via an <firstterm>EccServer</firstterm> and that event
+         data flow is setup by that EccServer to a data router program.
+        </para>
+        <para>
+         These two components advertise services on the private subnet connecting the
+         spdaq and to the microTCA backplane and therefore must run in that spdaq.
+         To determine this IP address, log in to that spdaq and type:
+        </para>
+        <informalexample>
+         <programlisting>
+     /sbin/ifconfig -a        
+         </programlisting>
+        </informalexample>
+         <para>
+             The IP address of the last of the <literal>eth</literal> interfaces
+             listed will be the spdaq's address on that private subnet.  For example:
+         </para>
+         <informalexample>
+             <programlisting>
+                 ...
+               TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+               collisions:0 txqueuelen:1000
+               RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+     
+     eth5      Link encap:Ethernet  HWaddr 90:e2:ba:86:7e:bd
+               inet addr:10.50.200.2  Bcast:10.50.255.255  Mask:255.255.0.0
+               inet6 addr: fe80::92e2:baff:fe86:7ebd/64 Scope:Link
+               UP BROADCAST MULTICAST  MTU:1500  Metric:1
+               RX packets:1422015 errors:0 dropped:0 overruns:0 frame:0
+               TX packets:282885 errors:0 dropped:0 overruns:0 carrier:0
+               collisions:0 txqueuelen:1000
+               RX bytes:563624233 (537.5 MiB)  TX bytes:65826892 (62.7 MiB)
+     
+     lo        Link encap:Local Loopback
+               inet addr:127.0.0.1  Mask:255.0.0.0
+               inet6 addr: ::1/128 Scope:Host
+                 ...
+             </programlisting>
+         </informalexample>
+         <para>
+             Shows this spdaq has a private subnet address of
+             <literal>10.50.200.2</literal>.
+         </para>
+         <para>
+             The EccServer advertises a single service on port 46002.
+             The data router, advertises two services, a control service
+             and a data transfer service.  These two services are configurable.
+             They are defined to GetController by the data router configuration.
+         </para>
+         <para>
+             In summary, the IPaddresses and services the data source prompter
+             prompts for inits network parameters box represent the following:
+         </para>
+         <variablelist>
+            <varlistentry>
+                <term>Public IP DNS name</term>
+                <listitem>
+                    <para>
+                        This is the DNS name of the spdaq on the NSCLDAQ
+                        network.  For example, the s800 CRDC GET microTCA
+                        crate is interfaced to spdaq08.nscl.msu.edu
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Data router control</term>
+                <listitem>
+                    <para>
+                        This is the data router control port.  This must
+                        match the data router IP address service in the
+                        Control box of the Setup data router dialog for
+                        GetController.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Data Router data</term>
+                <listitem>
+                    <para>
+                        The data flow service port.  This must be set up to
+                        match the Data flow box  of the Setup data router
+                        dialog for GetController (futhermore the type of router
+                        used must be TCP and the mode must be externral).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>Cobo target service</term>
+                <listitem>
+                    <para>
+                        The IP address must match that assigned by DHCP to the CoBo
+                        and the service must ben <literal>46001</literal>.
+                    </para>
+                </listitem>
+            </varlistentry>
+         </variablelist>
+   </section>
+   <section>
+    <title>Ring Buffers and ringmerge</title>
+    <para>
+        Data from the CoBo does not have run start/end delimeter records.
+        It's therefore not reliably possible for the nscldata router (which
+        turns CoBo frames into ring items) to know when to emit NSCLDAQ begin
+        run and end run records.
+    </para>
+    <para>
+        <filename>ringmerge</filename> is therefore employed to produce a
+        ringbuffer that has properly formatted NSCLDAQ runs.  The idea is that
+        the readout GUI knows when to emit begin and end run items.  It
+        therefore emits these to a state transition ring, while the data router
+        emits PHYSICS_EVENT ring items to a data ring.  The ring merge
+        program glues all of this together into a single output ring.
+    </para>
+    <para>
+        This scheme works around the fact that ring buffers can only have one
+        producer.   The ringbuffer parameters of the get parameter dialog
+        therefore mean the following:
+    </para>
+    <variablelist>
+        <varlistentry>
+            <term>URI Of Get data ring</term>
+            <listitem>
+                <para>
+                    This specifies the host and name of the ring buffer that
+                    will receive PHYSICS_EVENTS from the GET data router.  The
+                    host part of the URI must be the name of the spdaq as
+                    producers can only produce into local ringbuffers.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term>URI of Begin/End run rings</term>
+            <listitem>
+                <para>
+                    This specifies the host and name of a ringbuffer into which
+                    the Readout GUI will push BEGIN_RUN and END_RUN records.
+                    The host can be remote as the ReadoutGUI can run the
+                    appropriate producer program via ssh in a remote system.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term>Name of final data ring in (localhost)</term>
+            <listitem>
+                <para>
+                    The data source provider runs the ringmerge program
+                    in the host in which it is running.  Therefore, only the
+                    ringbuffer name needs to be provided not a URI.
+                </para>
+            </listitem>
+        </varlistentry>
+    </variablelist>
+   </section>
+   <section>
+    <title>Other parameters</title>
+    <para>
+        There are two other parameters the data source needs to have set. These
+        arise from the need to couple event fragments from GET with fragments
+        from other data sources (GET or otherwise).  
+    </para>
+    <para>
+        Data from each source sent to the event builder must have
+    </para>
+    <itemizedlist>
+        <listitem>
+            <para>
+                A unique source id that identifies which subsystem produced
+                the event.
+            </para>
+        </listitem>
+        <listitem>
+            <para>
+                A timestamp that is used to define coincideces for the sake of
+                gluing events togehter into events.
+            </para>
+        </listitem>
+    </itemizedlist>
+    <para>
+        Note that depending on whether or not a clock source is provided to the
+        CoBo, the timestamp may or may not be substituted for with the event number.
+    </para>
+    <variablelist>
+        <varlistentry>
+            <term>Timesstamp source</term>
+            <listitem>
+                <para>
+                    Determines what the datarouter puts into the ring item's
+                    timestamp field.  Normally, the default of
+                    <literal>timestamp</literal> is correct, however if there
+                    is no external clock source, this can be set to
+                    <literal>trigger_number</literal> instead.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term>Soource id:</term>
+            <listitem>
+                <para>
+                    Specifie the desired source id.
+                </para>
+            </listitem>
+        </varlistentry>
+    </variablelist>
+    <para>
+        Note that these parameters have significance for the data router
+        and downstream software involved in event building and untangling data
+        from event built events.
+    </para>
+   </section>
+   <section>
+    <title>So how does all this work anyway?</title>
+    <para>
+        By now you are probably pretty confused.  Here's a thumbnail of how this
+        all hangs together - that is what does what and who orchestrates each
+        move.
+    </para>
+    <para>
+        When the data source starts, getEccServer, and nscldatarouter are
+        forcefully killed in the spdaq that interfaces to the GET microTCA
+        crate.  Similarly the ring merge program is also killed in localhost.
+    </para>
+    <para>
+        Next the data source creates the requested ring buffers and starts up
+        an instance of getEccServer and nscldatarouter in the spdaq interfaced
+        to the GET crates.  An instance of ring merge is also started in the
+        same host as the ReadoutGUI.  When asked to check if the data source
+        is alive,the data source will check for the existence of all of these
+        processes and will declare itself to be dead if any are missing. This
+        normally causes ReadoutGUI ask all data sources to shutdown, which the
+        GET source does by killing off the remaining programs it started.
+    </para>
+    <para>
+        The Start of the data source is not sufficient to prepare to take data.
+        In addition to that:
+    </para>
+    <orderedlist>
+        <listitem>
+            <para>
+                A CoBo/ASAD configuration must be selected and loaded into the
+                hardware.
+            </para>
+        </listitem>
+        <listitem>
+            <para>
+                A data connection has to be made between the CoBo and the nscldata
+                router so that when the CoBo starts taking data nscldata router
+                receives it.
+            </para>
+        </listitem>
+    </orderedlist>
+    <para>
+        Both of these tasks are handled by the GET software
+        <filename>GetController</filename>
+        (located in <filename>/usr/opt/GET/bin</filename>).
+        This software is handed the data router configuration, and each
+        configuration (or test as they are called) contains the network configuration
+        of the CoBo it configures.
+    </para>
+    <para>
+        When GetController configures and loads the CoBo it makes the hardware
+        ready for data taking with the desired configuration.  It also forms the
+        required connection between the CoBo and the nscldatarouter so that the
+        latter receives any data the former emits.
+    </para>
+    <para>
+        The Begin button causes to data source to, in order:
+    </para>
+    <orderedlist>
+        <listitem>
+            <para>
+                Send a begin run item to one of the ringbuffers monitored by
+                ring merge.  This ring item will be placed in ring merge's output
+                ring.
+            </para>
+        </listitem>
+        <listitem>
+            <para>
+                After a delay to allow the begin item to make it through the system,
+                The <filename>daqstart</filename> program is used to ask the
+                CoBo to start taking data.  Data received by the data router
+                (frames) are wrapped inside a physics event ring
+                item and inserted into the other ring monitored by ringmerge.
+                ringmerge then relays those items to its output ring in turn as
+                well.
+            </para>
+        </listitem>
+    </orderedlist>
+    <para>
+        The end button essentialy does the reverse of begin:
+        <filename>daqstop</filename> is used to stop data taking and,
+        after a delay, an end run item is emitted into a ring buffer monitored
+        by ringmerge.
+    </para>
+   </section>
 </chapter>
 <chapter id='ch.components'>
    <title id='ch.components.title'>Interface components.</title>
    <para>
+    The data source makes use of a  number of relatively simple components.
+    If you are not using nscldaq, or not using the ReadoutShell with NSCLDAQ,
+    some of these components may be useful in their own right.  This
+    chapter
+    provides reference documentation for these components.
    </para>
+   <refentry>
+    <refmeta>
+        <refentrytitle>insertstatechange</refentrytitle>
+        <manvolnum>1nsclget</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>insertstatechange</refname>
+        <refpurpose>Insert run state change items in NSCLDAQ ringbuffers</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+<command>insertstatechange</command> <arg>option...</arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            Inserts a state change item into a ring buffers.  By state change
+            we mean either a BEGIN_RUN or an END_RUN item.
+        </para>
+        <para>
+            There must not be a producer
+            to the ring when invoked
+        </para>
+    </refsect1>
+   <refsect1>
+    <title>COMMAND OPTIONS</title>
+    <variablelist>
+        <varlistentry>
+            <term><option>-h</option>, <option>--help</option></term>
+            <listitem>
+                <para>
+                    Print help text and exit
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term><option>-V</option>, <option>--version</option></term>
+            <listitem>
+                <para>
+                    Prints the program version and then exits.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term><option>-r</option>, <option>--ring</option>=STRING</term>
+            <listitem>
+                <para>
+                    This option is required.  Its parameter is the ringbuffers
+                    into which the state transition record is inserted.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term><option> -R</option>, <option>--run</option>=INT</term>
+            <listitem>
+                <para>
+                    This option is required.  Its parameter is a non-negative
+                    integer whose value will be set as the run number for
+                    the state change item inserted in the ring buffer.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term><option>-t</option>, <option>--title</option>=STRING</term>
+            <listitem>
+                <para>
+                    This option is required.  Its parameter is used for the
+                    title in the run state item inserted into the ring buffer.
+                    Note that as with any shell command, quotes may be needed
+                    to allow embeded whitespace.  Embedded quotations also require
+                    special handling.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term><option>-s</option>, <option>--source-id</option>=INT</term>
+            <listitem>
+                <para>
+                    This option is required. Its value is the
+                    source id to put in the ring item's body header.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term><option>-T</option>, <option>--type</option>=STRING </term>
+            <listitem>
+                <para>
+                    This option is required.  Its value indicates
+                    the type of state change item generated.
+                    The option value can be either
+                    <literal>begin</literal> which generates a
+                    <literal>BEGIN_RUN</literal> ring item
+                    or <literal>end</literal> which generates an
+                    <literal>END_RUN</literal> item.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term><option>-o</option>, <option>--offset</option>=INT </term>
+            <listitem>
+                <para>
+                    This option is optional.  It is only allowed if
+                    <literal>--type=end</literal>.  If provided it specifies
+                    the number of seconds into the run the end run occured.
+                    If the option is not provided, the end run time offset
+                    generated will be <literal>0xffffffff</literal>.
+                    Begin run items are always generated with an offset
+                    of 0 by definition.
+                </para>
+            </listitem>
+        </varlistentry>        
+    </variablelist>
+   </refsect1>
+   </refentry>
+   <refentry>
+    <refmeta>
+        <refentrytitle>ringmerge</refentrytitle>
+        <manvolnum>1nsclget</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>ringmerge</refname>
+        <refpurpose>Merge data from multiple rings into one ring.</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+<command>ringmerge</command>  <arg>options...</arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            This program is a client of an arbitrary number of ringbuffers.
+            It coalesces the data sent to these rings into a single output ring.
+            No attempt is made to order the data.  The data are output first seen
+            first out.
+        </para>
+    </refsect1>
+    <refsect1>
+        <title>OPTIONS></title>
+        <variablelist>
+            <varlistentry>
+                <term><option>-h</option>, <option>--help</option></term>
+                <listitem>
+                    <para>
+                        Outputs a help message and exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-V</option>, <option>--version</option></term>
+                <listitem>
+                    <para>
+                        Outputs the program version and then exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-o</option>, <option>--output</option>=STRING</term>
+                <listitem>
+                    <para>
+                        The value of this option
+                        specifies the name of the output ringbuffer.  Since
+                        programs can only produce data for local ring buffers
+                        (remote clients can obtain data from ring buffers),
+                        this is a ring buffer name, not a URI.
+                    </para>
+                    <para>
+                        This option is mandatory and can only occur once on the
+                        command line.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-i</option>, <option>--input</option>=STRING</term>
+                <listitem>
+                    <para>
+                        The value of this option is a URI for a ring buffer
+                        from which ringmerge will accept data.  This option
+                        is mandatory and can be used several time on the
+                        command line to build up a list of ring buffers
+                        that will be merged into the output ringbuffer.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+    <refsect1>
+        <title>EXAMPLES</title>
+        <informalexample>
+            <programlisting>
+ringmerge --output merged --input=tcp://host1/ring1 --input=tcp://host2/ring2 
+            </programlisting>
+        </informalexample>
+        <para>
+            Merges data from the two rings;
+            <filename>tcp://host1/ring1</filename> and
+            <filename>tcp://host2/ring2</filename> into the ring buffer
+            <filename>merged</filename>.
+        </para>
+    </refsect1>   
+   </refentry>
+   <refentry>
+    <refmeta>
+        <refentrytitle>nscldatarouter</refentrytitle>
+        <manvolnum>1nsclget</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>nscldatarouter</refname>
+        <refpurpose>Receive and dispose of GET data.</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+<command>nscldatarouter</command>  <arg>options...</arg>
+        </cmdsynopsis>        
+    </refsynopsisdiv>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            In the GET software architecture, data routers are connected to
+            data sources.  They then receive data when data taking is active
+            and dispose of them in some way.  <command>nscldatarouter</command>
+            is an extension of the standard GET data router which defines, as
+            an additional disposal method, sending data to an NSCL ring buffer..
+        </para>
+        <para>
+            <command>nscldatarouter</command> knows how to pull either the timestamp
+            or the event ID (trigger number) from the CoBo frames it receives
+            and insert them along with a specific source id in the event body
+            headers.
+        </para>
+        <para>
+            Again I want to stress that this is an extension of the GET data router
+            and therefore can still do anything that data router can do.
+        </para>
+    </refsect1>
+    <refsect1>
+        <title>OPTIONS</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>-h</option>, <option>--help</option></term>
+                <listitem>
+                    <para>
+                        Outputs program help text and exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-V</option>, <option>--version</option></term>
+                <listitem>
+                    <para>
+                        Outputs the program version and exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-c</option>, <option>--controlservice</option>=STRING</term>
+                <listitem>
+                    <para>
+                        The value of this option
+                        specifies a control service name.  This defaults to
+                        accepting connections from any network interface
+                        (subnet) to port <literal>46003</literal>.
+                    </para>
+                    <para>
+                        The service string should be of the form:
+                        <replaceable>ip-address:port-num</replaceable>.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-d</option>, <option>--dataservice</option>=STRING</term>
+                <listitem>
+                    <para>
+                        The value of this option specifies the data transfer
+                        service in the form
+                        <replaceable>ip-address:port-num</replaceable>.
+                        Normally this defaults to the same IP address
+                        as the control service with a port number
+                        of <literal>46005</literal>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-p</option>, <option>--protocol</option>=STRING</term>
+                <listitem>
+                    <para>
+                        Specifies the type of application protocol to be used
+                        to transfer data from the CoBo to the router.
+                        This can be one of the values:
+                        <literal>ICE</literal>, <literal>TCP</literal>, or
+                        <literal>FDT</literal>.  The default value is
+                        <literal>TCP</literal> which just uses raw TCP/IP socket
+                        stream to transfer data.
+                    </para>
+                    <para>
+                        The <literal>ICE</literal> protocol is a remote procedure
+                        call protocol mediated by the Internet Communications
+                        Engine (ICE) library.
+                    </para>
+                    <para>
+                        The <literal>FDT</literal> protocol refers to the CERN
+                        Fast Data transfer protocol.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-i</option>, <option>--icearg</option>=STRING </term>
+                <listitem>
+                    <para>
+                        Each occurance of this option provides an option used
+                        to set up transfers using ICE.  These options are
+                        ignored if the <option>--protocol</option> is not
+                        ICE.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-o</option>, <option>--outputtype</option>=STRING</term>
+                <listitem>
+                    <para>
+                        This option specifies how the data router will
+                        dispose of its data.  The legal values are
+                        <literal>ByteCounter</literal>,
+                        <literal>ByteStorage</literal>,
+                        <literal>FrameCounter</literal>,
+                        and <literal>FrameStorage</literal> which all have the
+                        original meanings from the GET data router.
+                        This version introduces an additional output type;
+                        <literal>RingBuffer</literal> which outputs data
+                        to an NSCL Ring buffer.
+                    </para>
+                    <para>
+                        Note that the default value for this option is
+                        <literal>FrameStorage</literal> which produces
+                        GET Raw (graw) data files.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+        <para>
+            If <option>--outputtype</option>=RingBuffer, three additional
+            options are available for use that otherwise trigger error messages:
+        </para>
+        <variablelist>
+            <varlistentry>
+                <term><option>-r</option>, <option>--ring</option>=STRING</term>
+                <listitem>
+                    <para>
+                        The value of this option specifies the ring buffer to which
+                        frames will be written as <literal>PHYSICS_EVENT</literal>
+                        ring items.   Since the default value is an empty string,
+                        which while a legal ring name is not very usable, this
+                        option should be specified whenever the output type is
+                        <literal>RingBuffer</literal>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-s</option>, <option>--id</option>=INT</term>
+                <listitem>
+                    <para>
+                        Specifies the source id that will be put in body headers
+                        of ring items generated by the data router.  This value
+                        defaults to zero which, while legal is unusual.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-t</option>, <option>--timestamp</option>=STRING</term>
+                <listitem>
+                    <para>
+                        Specifies the source of the timestamp placed in the body
+                        headers.  This option can take one of the values
+                        <literal>timestamp</literal> or
+                        <literal>trigger_number</literal>.
+                        The latter can be used when there's no good mechanism
+                        to synchronize the CoBos with the timestamping
+                        mechanism of another data acquisition system.
+                    </para>
+                    <para>
+                        The default value is, therefore
+                        <literal>timestamp</literal>.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+   </refentry>
+   <refentry>
+    <refmeta>
+        <refentrytitle>ring2graw</refentrytitle>
+        <manvolnum>1nsclget</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>ring2graw</refname>
+        <refpurpose>Transform NSCLDAQ GET ring items to GET Raw data</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+<command>ring2graw</command> <arg><replaceable>ring-data-URI</replaceable></arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            This filter selects PHYSICS_EVENT items from the input URI and
+            output the bodies of those items (bodies don't include body headers)
+            to stdout.   This is all that's needed to transform NSCLDAQ GET
+            data to GET graw format.
+        </para>
+        <para>
+            One can that pipe this command to some tool that knows graw format
+            or redirect the output to another file e.g.:
+        </para>
+        <informalexample>
+            <programlisting>
+ring2graw tcp://spdaq08/get >data.graw
+            </programlisting>
+        </informalexample>
+    </refsect1>
+    <refsect1>
+        <title>SHORTCOMINGS</title>
+        <itemizedlist>
+            <listitem>
+                <para>
+                    <command>ring2graw</command> has no oneshot mode that
+                    exits after an <literal>END_RUN</literal> record.
+                    Thus the only way to exit the program is to kill it.
+                </para>
+            </listitem>
+        </itemizedlist>
+    </refsect1>
+   </refentry>
+   <refentry>
+    <refmeta>
+        <refentrytitle>GET Run control</refentrytitle>
+        <manvolnum>1nsclget</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>daqstart</refname>
+        <refname>daqstop</refname>
+        <refpurpose>Start and stop GET data taking.</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+<command>daqstart  <replaceable>hwnode</replaceable> <replaceable>eccserver</replaceable> <optional>1|0</optional></command>
+        </cmdsynopsis>
+        <cmdsynopsis>
+<command>daqstop</command>   <arg>hwnode</arg> <arg>eccserver</arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            These programs initiate (<command>daqstart</command>) and
+            terminate (<command>daqstop</command>) data taking in a CoBo.
+            The assumption they make is that some outside agency, such as
+            <command>GetController</command> has prepared the CoBo for
+            data taking with the desired configuration.
+        </para>
+        <para>
+            <parameter>hwnode</parameter> describes the service on which
+            the desired CoBo is accepting connections.  This is given in
+            <replaceable>ip-address:service-number</replaceable> format
+            where <parameter>ip-address</parameter> is the dotted
+            IP address of the CoBo and <parameter>service-number</parameter>
+            is normally <literal>46001</literal>.
+        </para>
+        <para>
+            <parameter>eccserver</parameter> describes the service on which the
+            GET eccserver is accepting connections.  This should be given in
+            <replaceable>ip-address:service-number</replaceable> where
+            the <parameter>ip-address</parameter> is the address of the host
+            system (spdaq) on the 10Gbit private subnet that connects the
+            host to the microTCA crate.  The <parameter>service-number</parameter>
+            is normally <literal>46002</literal>.
+        </para>
+        <para>
+            You can determine the proper IP addresses for a CoBo by examining
+            the <filename>/etc/dhcp/dhcpd.conf</filename> which determines which
+            physical ethernet addresses are given which IP addresses.  You can
+            determine the proper IP address for the Ecc Server by issuing the
+            command
+        </para>
+        <informalexample>
+            <programlisting>
+/sbin/ifconfig -a
+            </programlisting>
+        </informalexample>
+        <para>
+            And examining the IP address of the last ehternet interface.
+            For example; in spdaq08, the command above will give the following
+            output:
+        </para>
+        <informalexample>
+            <programlisting>
+eth4      Link encap:Ethernet  HWaddr 90:e2:ba:86:7e:bc
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+
+eth5      Link encap:Ethernet  HWaddr 90:e2:ba:86:7e:bd
+          inet addr:<emphasis>10.50.200.2</emphasis>  Bcast:10.50.255.255  Mask:255.255.0.0
+          inet6 addr: fe80::92e2:baff:fe86:7ebd/64 Scope:Link
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:1422015 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:282885 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:563624233 (537.5 MiB)  TX bytes:65826892 (62.7 MiB)
+
+lo        Link encap:Local Loopback
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:7224717 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:7224717 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0
+          RX bytes:119555197682 (111.3 GiB)  TX bytes:119555197682 (111.3 GiB)
+
+            </programlisting>
+        </informalexample>
+        <para>
+            See the <emphasis>emphasized</emphasis> part of the
+            <literal>eth5</literal> output.  The IP address is
+            <literal>10.50.200.2</literal>.
+        </para>
+        <para>
+            The final, optional, parameter for <command>daqstart</command>
+            controls whether or not the internal pulser is started.  For pulser
+            tests, this must be <literal>1</literal> (the default).
+            For ordinary data taking (e.g. with external triggers), this should
+            be <literal>0</literal>.  This is required because
+            <command>GetController</command> e.g. does not turn on the test pulser
+            until its <guibutton>Start</guibutton> button is clicked.
+        </para>
+        <para>
+            Note that <command>daqstop</command> unconditionally turns off the
+            test pulser so that if the next run does not explicitly turn it back
+            on, the pulser will remain off.
+        </para>
+    </refsect1>
+   
+   </refentry>
 </chapter>
+<appendix>
+    <title>Configurations and GetController</title>
+    <para>
+        I anticipate that this appendix will grow as we build up a library
+        of useful configurations.   These Cobo configurations are (or will be) in
+        the 'standard' S800 GetController Workspace
+    </para>
+    <variablelist>
+        <varlistentry>
+            <term>ExternalTrigger</term>
+            <listitem>
+                <para>
+                    This configuration should be used as the basis of
+                    externally triggered data taking.  Start by editing this
+                    configuration, providing thresholds, zero suppression and so
+                    forth, saving the resulting configuration with a descriptive,
+                    meaningful name.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term>pulser</term>
+            <listitem>
+                <para>
+                    This configuration performs un-zero suppressed readout
+                    using the internal test pulser both to supply data
+                    and trigger.
+                </para>
+            </listitem>
+        </varlistentry>
+        <varlistentry>
+            <term>partialreadout-pulser</term>
+            <listitem>
+                <para>
+                    This configuration performs zero suppressed readout
+                    using the internal test pulser for both data and trigger.
+                    The zero suppression thresholds are set such that only
+                    data from channel 0 of ASAD0 will be present.
+                </para>
+            </listitem>
+        </varlistentry>
+    </variablelist>
+</appendix>
 </book>
 
