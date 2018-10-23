@@ -1,0 +1,423 @@
+// =================================================
+//  GETDecoder Class
+// 
+//  Author:
+//    Genie Jhang ( geniejhang@majimak.com )
+//    Giordano Cerizza ( cerizza@nscl.msu.edu )  
+//
+// =================================================
+
+#include <cstdio>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <cmath>
+#include <arpa/inet.h>
+#include <ext/stdio_filebuf.h>
+
+#include "TString.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TObjArray.h"
+#include "TObjString.h"
+#include "TSystem.h"
+
+#include "GETDecoder.hh"
+#include "GETFileChecker.hh"
+
+#include "CDataSource.h"
+#include "CDataSourceFactory.h"
+#include "CRingItem.h"
+
+ClassImp(GETDecoder);
+
+GETDecoder::GETDecoder()
+  :fFrameInfoArray(NULL), fFrameInfo(NULL), fHeaderBase(NULL), fBasicFrameHeader(NULL), fBasicFrame(NULL)//, Data(std::cin)
+{
+  /**
+    * If you use this constructor, you have to add the rawdata using
+    * AddData() method and set the file with SetData() method, manually.
+   **/
+   
+  Initialize();
+}
+
+GETDecoder::GETDecoder(TString filename)
+  :fFrameInfoArray(NULL), fFrameInfo(NULL), fHeaderBase(NULL), fBasicFrameHeader(NULL), fBasicFrame(NULL)//, Data(std::cin)
+{
+  /**
+    * Automatically add the rawdata file to the list
+    * and set the file to read.
+   **/
+
+  Initialize();
+  //  AddData(filename);
+  //  SetData(0);
+  SetDataUrl((std::string)filename);  
+}
+
+void GETDecoder::Initialize()
+{
+  fNumTbs = 512;
+  
+  fIsDoneAnalyzing = kFALSE;
+  fIsDataInfo = kFALSE;
+
+  fDataSize = 0;
+  //  fCurrentDataID = -1;
+
+  fFrameInfoIdx = 0;
+  fCoboFrameInfoIdx = 0;
+  fTargetFrameInfoIdx = -1;
+  
+  if (    fFrameInfoArray == NULL) fFrameInfoArray = new TClonesArray("GETFrameInfo", 10000);
+  fFrameInfoArray -> Clear("C");
+  
+  if (      fHeaderBase == NULL) fHeaderBase = new GETHeaderBase();
+  else                           fHeaderBase -> Clear();
+  
+  if (fBasicFrameHeader == NULL) fBasicFrameHeader = new GETBasicFrameHeader();
+  else                           fBasicFrameHeader -> Clear();
+  
+  if (      fBasicFrame == NULL) fBasicFrame = new GETBasicFrame();
+  else                           fBasicFrame -> Clear();
+
+  fPrevDataID = 0;
+  fPrevPosition = 0;
+
+  startByte = 0;
+  endByte = 0;  
+}
+
+void GETDecoder::Clear() {
+
+  fIsDoneAnalyzing = kFALSE;
+  fIsDataInfo = kFALSE;
+
+  fDataSize = 0;
+  //  fCurrentDataID = -1;
+
+  fFrameInfoIdx = 0;
+  fCoboFrameInfoIdx = 0;
+  fTargetFrameInfoIdx = -1;
+
+  fFrameInfoArray -> Clear("C");
+  fHeaderBase -> Clear();
+  fBasicFrameHeader -> Clear();
+  fBasicFrame -> Clear();
+  
+  fDataList.clear();
+}
+
+void GETDecoder::SetNumTbs(Int_t value) { fNumTbs = value; } 
+
+Bool_t GETDecoder::AddData(TString filename)
+{
+  /**
+    * Check if there is a file named `filename`. If exists, add it to the list.
+   **/
+
+  TString nextData = GETFileChecker::CheckFile(filename);
+  if (!nextData.EqualTo("")) {
+    Bool_t isExist = 0;
+    for (Int_t iIdx = 0; iIdx < fDataList.size(); iIdx++) {
+      if (fDataList.at(0).EqualTo(nextData)) {
+        std::cout << "== [GETDecoder] The file already exists in the list!" << std::endl;
+        isExist = 1;
+      }
+    }
+
+    if (!isExist) {
+      fDataList.push_back(nextData);
+
+      return kTRUE;
+    }
+  }
+
+  return kFALSE;
+}
+
+Bool_t GETDecoder::SetData(Int_t index)
+{
+  /*
+  if (index >= fDataList.size()) {
+    std::cout << "== [GETDecoder] End of data list!" << std::endl;
+
+    return kFALSE;
+  }
+
+  if (fData.is_open())
+    fData.close();
+  
+  TString filename = fDataList.at(index);
+
+  fData.open(filename.Data(), std::ios::ate|std::ios::binary);
+  
+  if (!(fData.is_open())) {
+    std::cout << "== [GETDecoder] Data file open error! Check it exists!" << std::endl;
+    return kFALSE;
+  } else {
+    std::cout << "== [GETDecoder] " << filename << " is opened!" << std::endl;
+  }
+
+  fDataSize = fData.tellg();
+  std::cout << fDataSize << std::endl;
+  fData.seekg(0);
+  
+  if (!fIsDataInfo) {
+    fHeaderBase -> Read(fData, kTRUE);
+
+    int frametype = fHeaderBase -> GetFrameType();
+    std::cout << "== [GETDecoder] Frame Type: ";
+    if (frametype == 1)
+      std::cout << " Basic frame (partial readout mode)" << std::endl;
+    else if (frametype == 2)
+      std::cout << " Basic frame (full readout mode)" << std::endl;
+    
+    fIsDataInfo = kTRUE;
+  } 
+  */
+  
+  //  fCurrentDataID = index;
+  
+  return kTRUE;
+}
+
+Bool_t GETDecoder::SetDataUrl(std::string sourceUrl)
+{
+  std::cout << "== [GETDecoder] " << sourceUrl << " is opened!" << std::endl;
+
+  // Process the ring items using a file as tmp:
+
+  /*
+  CDataSource* pSource;
+  try {
+    std::vector<uint16_t> empty;
+    pSource = CDataSourceFactory::makeSource(sourceUrl, empty, empty);
+  }
+  catch (...) {
+    std::cout << "Exception caught making the data source" << std::endl;
+    exit(0);
+  }
+
+  CRingItem* pItem;
+  std::ofstream oss("tmp.txt",std::ofstream::binary);
+  while(pItem = pSource->getItem()) {
+    void* pData  = pItem->getBodyPointer();
+    size_t nByte = pItem->getBodySize();
+    //    oData << pData;
+    oss.write((char*)pData, nByte);
+    delete pItem;
+  }
+  oss.close();
+
+  fData.open("tmp.txt",std::ifstream::binary);
+
+  fData.seekg(0, ios::end);  
+  fDataSize = fData.tellg();
+  std::cout << "Datasize: " << fDataSize << std::endl;
+  fData.seekg(0, ios::beg);
+  
+  if (!fIsDataInfo) {
+    fHeaderBase -> Read(fData, kTRUE);
+    
+    int frametype = fHeaderBase -> GetFrameType();
+    std::cout << "== [GETDecoder] Frame Type: " ;
+    if (frametype == 1)
+      std::cout << " Basic frame (partial readout mode)" << std::endl;
+    else if (frametype == 2)
+      std::cout << " Basic frame (full readout mode)" << std::endl;
+
+    fIsDataInfo = kTRUE;
+  }
+  */
+
+  CDataSource* pSource;
+  try {
+    std::vector<uint16_t> empty;
+    pSource = CDataSourceFactory::makeSource(sourceUrl, empty, empty);
+  }
+  catch (...) {
+    std::cout << "Exception caught making the data source" << std::endl;
+    exit(0);
+  }
+
+  CRingItem* pItem;
+  while(pItem = pSource->getItem()) {
+    void* pData  = pItem->getBodyPointer();
+    size_t nByte = pItem->getBodySize();
+    oData.write((char*)pData, nByte);
+    delete pItem;
+  }
+  oData.seekg(0, ios::end);
+  std::cout << "Size of stringstream: " << oData.tellg() << std::endl;
+  oData.seekg(0, ios::beg);
+  sData = oData.str();
+  
+  std::istream& Data = oData;
+  fDataSize = Data.tellg();
+  Data.seekg(0);
+  
+  if (!fIsDataInfo) {
+    fHeaderBase -> Read(Data, kTRUE);
+    
+    int frametype = fHeaderBase -> GetFrameType();
+    std::cout << "== [GETDecoder] Frame Type: " ;
+    if (frametype == 1)
+      std::cout << " Basic frame (partial readout mode)" << std::endl;
+    else if (frametype == 2)
+      std::cout << " Basic frame (full readout mode)" << std::endl;
+
+    fIsDataInfo = kTRUE;
+  }
+  
+  //  fCurrentDataID = 0;
+  
+  return kTRUE;
+
+}
+
+//Bool_t GETDecoder::NextData() { return SetData(fCurrentDataID + 1); }
+Int_t GETDecoder::GetNumTbs() { return fNumTbs; }
+
+GETBasicFrame *GETDecoder::GetBasicFrame(Int_t frameID)
+{
+  std::stringstream pData(sData);
+  //  pData.seekg(0, ios::end);
+  //  std::cout << "Size of stringstream: " << pData.tellg() << std::endl;
+  //  pData.seekg(0, ios::beg);
+  
+  startByte=endByte; 
+  pData.seekg(startByte);    
+  std::istream& Data = pData;
+  
+  if (frameID == -1)
+    fTargetFrameInfoIdx++;
+  else
+    fTargetFrameInfoIdx = frameID;
+
+  std::cout << "fTargetFrameInfoIdx: " << fTargetFrameInfoIdx << std::endl;
+  
+  while (kTRUE) {
+    //    fData.clear();
+    Data.clear();    
+
+    if (fIsDoneAnalyzing)
+      if (fTargetFrameInfoIdx > fFrameInfoArray -> GetLast())
+        return NULL;
+
+    if (fFrameInfoIdx > fTargetFrameInfoIdx)
+      fFrameInfoIdx = fTargetFrameInfoIdx;
+    
+    std::cout << "fFrameInfoIdx " << fFrameInfoIdx << std::endl;
+
+    fFrameInfo = (GETFrameInfo *) fFrameInfoArray -> ConstructedAt(fFrameInfoIdx);
+    while (fFrameInfo -> IsFill()) {
+
+#ifdef DEBUG
+      cout << "fFrameInfoIdx: " << fFrameInfoIdx << " fTargetFrameInfoIdx: " << fTargetFrameInfoIdx << endl;
+#endif
+
+      if (fFrameInfoIdx == fTargetFrameInfoIdx) {
+        BackupCurrentState(startByte);
+
+	//	std::cout << "fFrameInfo -> GetDataID() " << fFrameInfo -> GetDataID() << " fCurrentDataID " << fCurrentDataID << std::endl;
+
+	//	if (fFrameInfo -> GetDataID() != fCurrentDataID)
+	//	  SetData(fFrameInfo -> GetDataID());
+   
+	//        fData.seekg(fFrameInfo -> GetStartByte());
+	//        fBasicFrame -> Read(fData);
+	//	std::cout << "SetData(fFrameInfo -> GetDataID()) has value " << fFrameInfo -> GetDataID() << std::endl;
+	std::cout << "GetStartByte: " << fFrameInfo -> GetStartByte() << std::endl;
+	
+	//	Data.seekg(fFrameInfo -> GetStartByte());
+	Data.seekg(fFrameInfo -> GetStartByte());	
+        fBasicFrame -> Read(Data);	
+
+	//        RestorePreviousState();
+	
+#ifdef DEBUG
+	cout << "Returned event ID: " << fBasicFrame -> GetEventID() << endl;
+#endif
+	  
+        return fBasicFrame;
+      } else
+        fFrameInfo = (GETFrameInfo *) fFrameInfoArray -> ConstructedAt(++fFrameInfoIdx);
+    }
+    
+    std::cout << "startByte " << startByte << std::endl;
+    
+    //    fBasicFrameHeader -> Read(fData);
+    //    fData.ignore(fBasicFrameHeader -> GetFrameSkip());
+    fBasicFrameHeader -> Read(Data);
+    Data.ignore(fBasicFrameHeader -> GetFrameSkip());
+    
+    endByte = startByte + fBasicFrameHeader -> GetFrameSize();    
+    std::cout << "endByte = " << endByte << " = " << startByte << "+" << fBasicFrameHeader-> GetFrameSize() << endl;
+    //    std::cout << "fCurrentDataID: " << fCurrentDataID << std::endl;
+    std::cout << "fBasicFrameHeader -> GetEventID(): " << fBasicFrameHeader -> GetEventID() << std::endl;
+    //    fFrameInfo -> SetDataID(fCurrentDataID);
+    fFrameInfo -> SetStartByte(startByte);
+    fFrameInfo -> SetEndByte(endByte);
+    fFrameInfo -> SetEventID(fBasicFrameHeader -> GetEventID());
+
+    CheckEndOfData();
+  }
+}
+
+void GETDecoder::PrintFrameInfo(Int_t frameID) {
+  if (frameID == -1) {
+    for (Int_t iEntry = 0; iEntry < fFrameInfoArray -> GetEntriesFast(); iEntry++)
+      ((GETFrameInfo *) fFrameInfoArray -> At(iEntry)) -> Print();
+  } else
+    ((GETFrameInfo *) fFrameInfoArray -> At(frameID)) -> Print();
+}
+
+void GETDecoder::CheckEndOfData() {
+  if (fFrameInfo -> GetEndByte() == fDataSize)
+    if (!NextData() && !fIsDoneAnalyzing) {
+
+#ifdef DEBUG
+      std::cout << " == [GETDecoder] File ended!" << std::endl;
+#endif
+
+      fIsDoneAnalyzing = kTRUE;
+
+    }
+}
+
+void GETDecoder::BackupCurrentState(ULong64_t current) {
+  std::stringstream pData(sData);
+  pData.seekg(current);
+  std::istream& Data = pData;
+  
+  //  fPrevDataID = fCurrentDataID;
+  //  fPrevPosition = fData.tellg();
+  fPrevPosition = Data.tellg();  
+
+  std::cout << "\t\t >>> Inside BackupCurrentState" << std::endl;
+  //  std::cout << "\t\t >>> fPrevDataID " << fPrevDataID << " fPrevPosition " << fPrevPosition << std::endl;
+  std::cout << "\t\t >>> fPrevPosition " << fPrevPosition << std::endl;  
+}
+
+/*
+void GETDecoder::RestorePreviousState() {
+  std::stringstream pData(sData);
+  std::istream& Data = pData;
+    
+  if (fIsDoneAnalyzing)
+    return;
+
+  if (fPrevDataID != fCurrentDataID)
+    SetData(fPrevDataID);
+
+  //  fData.seekg(fPrevPosition);
+  Data.seekg(fPrevPosition);  
+
+  std::cout << "\t\t >>> Inside RestorePreviousState" << std::endl;
+  std::cout << "\t\t >>> fPrevDataID " << fPrevDataID << " fPrevPosition " << fPrevPosition << std::endl;
+  
+}
+*/
