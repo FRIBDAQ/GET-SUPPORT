@@ -1,0 +1,18 @@
+Geometry 2,2
+# /scratch/fox/daq/GET-SUPPORT/spectclhits/chan0.win Written by @(#)dispwind.cc	2.2 1/28/94  at Wed Oct 24 15:05:40 2018
+
+Window  0,0,"time.00"
+  LABEL PEAK
+   SCALE  AUTO
+   MAPPED 1
+Endwindow
+Window  1,0,"height.00"
+  LABEL PEAK
+   SCALE Manual 10
+   MAPPED 1
+Endwindow
+Window  0,1,"integral.00"
+  LABEL PEAK
+   SCALE Manual 4
+   MAPPED 1
+Endwindow

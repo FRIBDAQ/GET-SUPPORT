@@ -6,7 +6,9 @@ include $(INSTDIR)/etc/SpecTcl_Makefile.include
 #  If you have any switches that need to be added to the default c++ compilation
 # rules, add them to the definition below:
 
-USERCXXFLAGS=
+#  ../analyzing has the AnalyzeFrame.h header which defines NSCLGET::Hit.
+
+USERCXXFLAGS=-I../analyzing
 
 #  If you have any switches you need to add to the default c compilation rules,
 #  add them to the defintion below:
@@ -21,8 +23,7 @@ USERLDFLAGS=
 #   Append your objects to the definitions below:
 #
 
-OBJECTS=MySpecTclApp.o
-
+OBJECTS=MySpecTclApp.o CGetHitUnpacker.o
 #
 #  Finally the makefile targets.
 #
