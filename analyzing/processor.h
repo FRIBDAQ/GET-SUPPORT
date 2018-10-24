@@ -37,6 +37,7 @@ class CRingPhysicsEventCountItem;
 class CDataFormatItem;
 class CGlomParameters;
 class CRingItem;
+class CDataSink;
 
 /**
  * The concept of this class is really simple.  A virtual method for each
@@ -46,7 +47,10 @@ class CRingItem;
 
 class CRingItemProcessor
 {
+private:
+    CDataSink& m_sink;
 public:
+    CRingItemProcessor(CDataSink& sink);
     virtual void processScalerItem(CRingScalerItem& item);
     virtual void processStateChangeItem(CRingStateChangeItem& item);
     virtual void processTextItem(CRingTextItem& item);

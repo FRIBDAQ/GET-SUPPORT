@@ -35,6 +35,7 @@
 #include <CRingPhysicsEventCountItem.h>
 #include <CDataFormatItem.h>
 #include <CGlomParameters.h>
+#include <CDataSink.h>
 
 
 // Standard library headers:
@@ -42,6 +43,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <cstring>
 
 #include <ctime>
 
@@ -67,6 +69,15 @@ void dumpHit(const NSCLGET::Hit& h)
     std::cout << "peak: " << h.s_peak << std::endl;
     std::cout << "integ:" << h.s_integral << std::endl;
 }
+/**
+ * constructor
+ *    Save the data sink so hits can be output to file.
+ *
+ *  @param sink - reference to the data sink.
+ */
+CRingItemProcessor::CRingItemProcessor(CDataSink& sink) :
+    m_sink(sink)
+{}
 
 /**
  * processScalerItem
@@ -82,6 +93,7 @@ void dumpHit(const NSCLGET::Hit& h)
 void
 CRingItemProcessor::processScalerItem(CRingScalerItem& item)
 {
+    m_sink.putItem(item);
 }
 /**
  * processStateChangeItem.
@@ -102,6 +114,7 @@ CRingItemProcessor::processStateChangeItem(CRingStateChangeItem& item)
     std::cout << "Title: " << item.getTitle() << std::endl;
     std::cout << "Occured at: " << std::ctime(&tm)
         << " " << item.getElapsedTime() << " sec. into the run\n";
+    m_sink.putItem(item);
 }
 /**
  * processTextItem
@@ -121,6 +134,7 @@ CRingItemProcessor::processStateChangeItem(CRingStateChangeItem& item)
 void
 CRingItemProcessor::processTextItem(CRingTextItem& item)
 {
+    m_sink.putItem(item);
 }
 /**
  * processEvent
@@ -131,13 +145,27 @@ CRingItemProcessor::processTextItem(CRingTextItem& item)
 void
 CRingItemProcessor::processEvent(CPhysicsEventItem& item)
 {
-    std::cout << "Event: ------\n";
     std::vector<NSCLGET::Hit> hits =
         NSCLGET::analyzeFrame(item.getBodySize(), item.getBodyPointer());
         
+    // Make a ring item and put the hits in verbatiom.
+    
+    size_t requiredSize = hits.size() * sizeof(NSCLGET::Hit) + 100;
+    
+    CPhysicsEventItem hitItem(item.getEventTimestamp(), item.getSourceId(), item.getBarrierType(), requiredSize);
+    uint8_t* p = static_cast<uint8_t*>(hitItem.getBodyCursor());
+    uint32_t nhits = hits.size();
+    memcpy(p, &nhits, sizeof(uint32_t));
+    p += sizeof(uint32_t);
+ 
     for (int i = 0; i < hits.size(); i++) {
-        dumpHit(hits[i]);
+        memcpy(p, &(hits[i]), sizeof(NSCLGET::Hit));
+        p += sizeof(NSCLGET::Hit);
     }
+    hitItem.setBodyCursor(p);
+    hitItem.updateSize();
+    m_sink.putItem(hitItem);
+    
 }
 /**
  * processEventCount
@@ -153,6 +181,7 @@ CRingItemProcessor::processEvent(CPhysicsEventItem& item)
 void
 CRingItemProcessor::processEventCount(CRingPhysicsEventCountItem& item)
 {
+    m_sink.putItem(item);
 }
 /**
  * processFormat
@@ -164,6 +193,7 @@ CRingItemProcessor::processEventCount(CRingPhysicsEventCountItem& item)
 void
 CRingItemProcessor::processFormat(CDataFormatItem& item)
 {
+    m_sink.putItem(item);
 }
 /**
  * processGlomParams
@@ -180,6 +210,7 @@ CRingItemProcessor::processFormat(CDataFormatItem& item)
 void
 CRingItemProcessor::processGlomParams(CGlomParameters& item)
 {
+    m_sink.putItem(item);
 }
 /**
  * processUnknownItemType
@@ -194,4 +225,5 @@ CRingItemProcessor::processGlomParams(CGlomParameters& item)
 void
 CRingItemProcessor::processUnknownItemType(CRingItem& item)
 {
+    m_sink.putItem(item);
 }

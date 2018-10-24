@@ -47,6 +47,9 @@
 #include <CGlomParameters.h>          //                 |
 #include <CDataFormatItem.h>          //             ----+----
 
+#include <CDataSink.h>
+#include <CDataSinkFactory.h>
+
 // Headers for other modules in this program:
 
 #include "processor.h"
@@ -75,9 +78,10 @@ usage(std::ostream& o, const char* msg)
 {
     o << msg << std::endl;
     o << "Usage:\n";
-    o << "  readrings uri\n";
-    o << "      uri - the file: or tcp: URI that describes where data comes from\n";
-    std::exit(EXIT_FAILURE);
+    o << "  readrings inputuri outputuri\n";
+    o << "      inputuri - the file: or tcp: URI that describes where data comes from\n";
+    o << "      outputuri - The sink to which the hit ring items gets put\n";
+   std::exit(EXIT_FAILURE);
 }
 
 
@@ -97,7 +101,7 @@ main(int argc, char** argv)
 {
     // Make sure we have enough command line parameters.
     
-    if (argc != 2) {
+    if (argc != 3) {
         usage(std::cerr, "Not enough command line parameters");
     }
     // Create the data source.   Data sources allow us to specify ring item
@@ -114,13 +118,20 @@ main(int argc, char** argv)
     catch (CException& e) {
         usage(std::cerr, "Failed to open ring source");
     }
+    
+    // Now the data sink:
+    
+    CDataSinkFactory sinkFactory;
+    CDataSink* pSink = sinkFactory.makeSink(argv[2]);
+    std::unique_ptr<CDataSink> sink(pSink);    // Ensure deletion/flush.
+    
     // The loop below consumes items from the ring buffer until
     // all are used up.  The use of an std::unique_ptr ensures that the
     // dynamically created ring items we get from the data source are
     // automatically deleted when we exit the block in which it's created.
     
     CRingItem*  pItem;
-    CRingItemProcessor processor;
+    CRingItemProcessor processor(*sink);
     
     while ((pItem = pDataSource->getItem() )) {
         std::unique_ptr<CRingItem> item(pItem);     // Ensures deletion.

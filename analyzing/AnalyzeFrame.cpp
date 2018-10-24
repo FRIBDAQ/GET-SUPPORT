@@ -96,9 +96,6 @@ CreateHits::processFrame(mfm::Frame& frame)
     uint16_t ftype   = ftypeField.value<uint16_t>();
 
     
-    std::cout << "---------------- Frame --------------\n";
-    std::cout << "Frame type: " << ftype
-        << " Item count = " << nSamples << std::endl;
 
     // Figure out the cobo/ASAD numbers too:
     
@@ -106,8 +103,6 @@ CreateHits::processFrame(mfm::Frame& frame)
     mfm::Field asadField = frame.headerField(27,1);
     uint8_t cobo    = coboField.value<uint8_t>();
     uint8_t asad    = asadField.value<uint8_t>();
-    
-    std::cout << "Cobo: " << (unsigned)cobo << " ASAD: " << (unsigned)asad << std::endl;
     
     if (ftype == COMPRESSED_FRAME) {
         processCompressedFrame(frame, nSamples, cobo, asad);
