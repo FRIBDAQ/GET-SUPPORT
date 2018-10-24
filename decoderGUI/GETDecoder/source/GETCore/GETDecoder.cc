@@ -24,7 +24,6 @@
 #include "TSystem.h"
 
 #include "GETDecoder.hh"
-#include "GETFileChecker.hh"
 
 #include "CDataSource.h"
 #include "CDataSourceFactory.h"

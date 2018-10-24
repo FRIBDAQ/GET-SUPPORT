@@ -19,7 +19,6 @@ include_directories(
 ${ROOT_INCLUDE_DIRS}
 ${CMAKE_SOURCE_DIR}/source/GETCore
 ${CMAKE_SOURCE_DIR}/source/GETFormat
-${CMAKE_SOURCE_DIR}/source/GETUtil
 )
 add_definitions(${ROOT_CXX_FLAGS})
 
@@ -28,10 +27,6 @@ ${CMAKE_SOURCE_DIR}/source/GETFormat/GETBasicFrame.hh
 ${CMAKE_SOURCE_DIR}/source/GETFormat/GETBasicFrameHeader.hh
 ${CMAKE_SOURCE_DIR}/source/GETFormat/GETHeaderBase.hh
 LINKDEF ${CMAKE_SOURCE_DIR}/source/GETFormat/libGETFormatLinkDef.h)
-
-ROOT_GENERATE_DICTIONARY(G__GETUtilDict 
-${CMAKE_SOURCE_DIR}/source/GETUtil/GETFileChecker.hh
-LINKDEF ${CMAKE_SOURCE_DIR}/source/GETUtil/libGETUtilLinkDef.h)
 
 ROOT_GENERATE_DICTIONARY(G__GETCoreDict 
 ${CMAKE_SOURCE_DIR}/source/GETCore/GETDecoder.hh
@@ -44,9 +39,6 @@ ${CMAKE_SOURCE_DIR}/source/GETFormat/GETBasicFrame.cc
 ${CMAKE_SOURCE_DIR}/source/GETFormat/GETBasicFrameHeader.cc
 ${CMAKE_SOURCE_DIR}/source/GETFormat/GETHeaderBase.cc
 G__GETFormatDict.cxx
-
-${CMAKE_SOURCE_DIR}/source/GETUtil/GETFileChecker.cc
-G__GETUtilDict.cxx
 
 ${CMAKE_SOURCE_DIR}/source/GETCore/GETDecoder.cc
 ${CMAKE_SOURCE_DIR}/source/GETCore/GETFrameInfo.cc
