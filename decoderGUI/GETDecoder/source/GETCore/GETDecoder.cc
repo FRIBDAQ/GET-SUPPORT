@@ -218,7 +218,6 @@ void GETDecoder::PrintFrameInfo(Int_t frameID) {
 void GETDecoder::CheckEndOfData() {
   if (fFrameInfo -> GetEndByte() == fDataSize)
     if (!fIsDoneAnalyzing) {
-      std::cout << " == [GETDecoder] File ended!" << std::endl;
       fIsDoneAnalyzing = kTRUE;
     }
 }

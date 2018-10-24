@@ -408,7 +408,7 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	
 	if (frame == nullptr){
 	  std::cout << "== [GETDecoder] End of file" << std::endl;
-	  gApplication->Terminate(0);
+	  break;
 	}
 	
 	coboID = frame -> GetCoboID();
@@ -417,11 +417,11 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	// Data sanity check
 	if (coboID != fCOBO){
 	  std::cout << "Selected COBO doesn't exist in data!" << std::endl;
-	  gApplication->Terminate(0);
+	  break;
 	}
 	if (asadID != fASAD){
 	  std::cout << "Selected ASAD doesn't exist in data!" << std::endl;
-	  gApplication->Terminate(0);
+	  break;
 	}
 	// Access data and fill the histogram
 	rawadc = frame -> GetSample(fAGET, fCHN);
@@ -431,7 +431,7 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	  h->Fill(iTb, rawadc[iTb]);
 	h->SetStats(0);
 	h->SetMaximum(fADC);
-	title = Form("Cobo %d AsAd %d Aget %d Channel %d", fCOBO, fASAD, fAGET, fCHN);
+	title = Form("Cobo %d AsAd %d Aget %d Channel %d Event %d", fCOBO, fASAD, fAGET, fCHN, numEv);
 	h->SetTitle(title);
 	h->GetXaxis()->SetTitle("Time buckets");
 	h->GetYaxis()->SetTitle("ADC channels");
