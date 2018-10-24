@@ -71,7 +71,7 @@ private:
     );
     double interpolatePeak(
         const std::vector<std::pair<unsigned, unsigned>>&  data,
-        unsigned maxpos
+        unsigned maxpos, double offset
     );
 };
 
@@ -181,8 +181,6 @@ CreateHits::processCompressedFrame(
 }
 /**
  * processUncompressedFrame
- *    In this format, the 16 bit header fields at
- *    79, 81, 83, 85 tell use the last cell sampled by AGET 0 - 3.
  *
  *    The data themselves are just 16 bit integers.  Each value is bit
  *    encoded as follows:
@@ -204,7 +202,58 @@ CreateHits::processUncompressedFrame(
     mfm::Frame& frame, uint32_t samples, uint8_t cobo, uint8_t asad
 )
 {
-    std::cout << "-- uncompressed frame analysis not yet implemented\n";
+    // accumulate the traces in this array of vectors.
+    // .first is the bin number and .second the trace height.
+    // this is done even here so we can use addHitFromCompressedData
+    // as we did with compressed data.
+    
+    std::vector<std::pair<unsigned, unsigned>> allsamples[AGETS_PER_ASAD*CHANNELS_PER_AGET];
+    unsigned agetChan[AGETS_PER_ASAD];
+    for (int i =0; i < AGETS_PER_ASAD; i++) {
+        agetChan[i] = 0;
+    }
+    
+    
+    // Inner loop is over all channels in an aget, collect the waveforms
+    
+    int itemIndex = 0;
+
+    while (samples) {
+    
+        mfm::Item sampleItem = frame.itemAt(itemIndex);
+        uint64_t itemSize    = sampleItem.size_B();
+        mfm::Field sampleField= sampleItem.field(0, itemSize);
+        uint16_t item         = sampleField.value<uint16_t>();
+        
+        // Break the item up into AGET number and sample value:
+        
+        unsigned aget = (item & 0xc000) >> 14;
+        unsigned value = item & 0xfff;
+        
+      
+        // agetChan is the channel inside this aget to use:
+        
+        unsigned chan = agetChan[aget];
+        agetChan[aget] = (agetChan[aget] + 1) % CHANNELS_PER_AGET;
+        
+        //Figure out the global channel and store the hit.  The bin number
+        // will just be the index number in the vector as this is unsuppressed.
+        
+        unsigned asadchan = aget * CHANNELS_PER_AGET + chan;
+        unsigned bin = allsamples[asadchan].size();
+        allsamples[asadchan].push_back(std::pair<unsigned, unsigned>(bin, value));
+        
+        itemIndex++;
+        samples--;
+    }
+    // Now add the hits.
+    
+    for (unsigned i = 0; i < CHANNELS_PER_AGET*AGETS_PER_ASAD; i++) {
+        std::vector<std::pair<unsigned, unsigned>>& c(allsamples[i]);
+        if (c.size()) {
+            addHitFromCompressedData(cobo, asad, i, c);
+        }
+    }
 }
 /**
  * addHitFromCompressedData
@@ -230,7 +279,7 @@ CreateHits::addHitFromCompressedData(
     // Reconstruct the asad# and the channel inside it.
     
     unsigned aget = asadchan / CHANNELS_PER_AGET;
-    unsigned chan = asadchan & CHANNELS_PER_AGET;
+    unsigned chan = asadchan % CHANNELS_PER_AGET;
     
     // figure out the offset from the min of left most and right most
     // The assumption is that between these is a nice peak:
@@ -243,15 +292,15 @@ CreateHits::addHitFromCompressedData(
     // Figure out where the centroid is
     // and the integral of the data:
     
-    double sum;
-    double wsum;
+    double sum = 0.0;
+    double wsum = 0.0;
 
     double maxval = 0.0;
     unsigned maxpos = 0;
     
     for (unsigned i = 0; i < nSamples; i++) {
         double bin = chsamples[i].first;
-        double ht  = chsamples[i].second;
+        double ht  = chsamples[i].second - offset;
         
         sum += ht;
         wsum += bin*ht;
@@ -262,7 +311,7 @@ CreateHits::addHitFromCompressedData(
         }
     }
     double centroid = wsum/sum;
-    double peak     = interpolatePeak(chsamples, maxpos);
+    double peak     = interpolatePeak(chsamples, maxpos, offset);
     
     //Make and save the hit:
     
@@ -286,15 +335,16 @@ CreateHits::addHitFromCompressedData(
  *
  * @param data - the data array of bin number/value pairs.
  * @param maxpos - the _index_ (not bucket) of the maximum value.
+ * @param offset - estimated baseline.
  * @return double - peak height computed as described above.
  */
 double
 CreateHits::interpolatePeak(
         const std::vector<std::pair<unsigned, unsigned>>&  data,
-        unsigned maxpos
+        unsigned maxpos, double offset
 )
 {
-    double peak = data[maxpos].second;
+    double peak = data[maxpos].second  - offset;
     
     // Do we have enough points to do the interpolation and peak solve?
     
@@ -304,13 +354,13 @@ CreateHits::interpolatePeak(
         // Get the three points in the parabola:
         
         double x1 = data[maxpos-1].first;
-        double y1 = data[maxpos-1].second;
+        double y1 = data[maxpos-1].second - offset;
         
         double x2 = data[maxpos].first;
-        double y2 = data[maxpos].second;
+        double y2 = data[maxpos].second - offset;
         
         double x3 = data[maxpos+1].first;
-        double y3 = data[maxpos+1].first;
+        double y3 = data[maxpos+1].second - offset;
         
         // See http://fourier.eng.hmc.edu/e176/lectures/NM/node25.html for
         // the derivation of below.  Note that if the denominator
