@@ -54,6 +54,19 @@ static std::map<CGlomParameters::TimestampPolicy, std::string> glomPolicyMap = {
 };
 
 
+static
+void dumpHit(const NSCLGET::Hit& h)
+{
+
+    std::cout << "Cobo: " << h.s_cobo << std::endl;
+    std::cout << "Asad: " << h.s_asad << std::endl;
+    std::cout << "Aget: " << h.s_aget << std::endl;
+    std::cout << "chan: " << h.s_chan << std::endl;
+    
+    std::cout << "Time: " << h.s_time << std::endl;
+    std::cout << "peak: " << h.s_peak << std::endl;
+    std::cout << "integ:" << h.s_integral << std::endl;
+}
 
 /**
  * processScalerItem
@@ -118,8 +131,13 @@ CRingItemProcessor::processTextItem(CRingTextItem& item)
 void
 CRingItemProcessor::processEvent(CPhysicsEventItem& item)
 {
+    std::cout << "Event: ------\n";
     std::vector<NSCLGET::Hit> hits =
         NSCLGET::analyzeFrame(item.getBodySize(), item.getBodyPointer());
+        
+    for (int i = 0; i < hits.size(); i++) {
+        dumpHit(hits[i]);
+    }
 }
 /**
  * processEventCount
