@@ -39,7 +39,7 @@ typedef struct _hit {
     unsigned s_cobo;              // Cobo index (0 usually).
     unsigned s_asad;              // ASAD index (board within cobo).
     unsigned s_aget;              // AGET chip within an ASAD.
-    unsigned s_chan;              // Channel numbe within an AGET.
+    unsigned s_chan;              // Channel number within an AGET.
     
     // Extracted data:
     
