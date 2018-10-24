@@ -26,7 +26,7 @@ const Int_t NAGET=4;
 const Int_t NCHN=68;
 const Int_t NTBS=2;
 
-TString filename;
+TString filename, filename_open;
 
 enum CommandIdentifiers {
   M_FILE_OPEN,
@@ -60,7 +60,8 @@ private:
   Int_t               fASAD = 0;
   Int_t               fAGET = 0;
   Int_t               fCHN = 0;
-  Int_t               fTbs, fADC=4095;
+  Int_t               fTbs = 256;
+  Int_t               fADC=4095;
   TGTextEntry         *fmaxADC;
   TGTextBuffer        *maxadc;
   
@@ -148,6 +149,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
     fCOBObox->AddEntry(tmpCOBO, i+1);
   }
   hframe->AddFrame(fCOBObox, new TGLayoutHints(kLHintsCenterX|kLHintsCenterY, 5, 10, 10, 10));
+  fCOBObox->Select(1);
   fCOBObox->Resize(100, 20);  
 
   // Create ASAD menu
@@ -161,6 +163,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
     fASADbox->AddEntry(tmpASAD, i+1);
   }
   hframe->AddFrame(fASADbox, new TGLayoutHints(kLHintsCenterX|kLHintsCenterY, 5, 10, 10, 10));
+  fASADbox->Select(1);
   fASADbox->Resize(100, 20);
 
   AddFrame(hframe);
@@ -182,6 +185,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
     fAGETbox->AddEntry(tmpAGET, i+1);
   }
   hframe2->AddFrame(fAGETbox, new TGLayoutHints(kLHintsCenterX|kLHintsCenterY, 5, 10, 10, 10));
+  fAGETbox->Select(1);
   fAGETbox->Resize(100, 20);  
 
   // Create CHN menu
@@ -195,6 +199,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
     fCHNbox->AddEntry(tmpCHN, i+1);
   }
   hframe2->AddFrame(fCHNbox, new TGLayoutHints(kLHintsCenterX|kLHintsCenterY, 5, 10, 10, 10));
+  fCHNbox->Select(1);
   fCHNbox->Resize(100, 20);
 
   AddFrame(hframe2);
@@ -217,6 +222,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
     fTBbox->AddEntry(tmpTB, i+1);
   }
   hframe3->AddFrame(fTBbox, new TGLayoutHints(kLHintsCenterX|kLHintsCenterY, 5, 10, 10, 10));
+  fTBbox->Select(1);
   fTBbox->Resize(100, 20);
 
   // Create max ADC selection
@@ -387,9 +393,10 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	if (filename == "")
 	  std::cout << "Please open a file...(File->Open). Try again!" << std::endl;
 	// Create GETDecoder only the first time
-	if (!decoder){
+	if (!decoder || (filename != filename_open)){
 	  decoder = new GETDecoder(filename);
 	  std::cout <<"== [GETDecoder] diagnostics macro for COBO " << fCOBO << " ASAD: " << fASAD << " AGET: " << fAGET << " CHANNEL: " << fCHN << std::endl;
+	  filename_open = filename;
 	}
 	numEv++;
 	// Get basic frame
