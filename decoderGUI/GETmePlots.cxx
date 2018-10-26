@@ -1,3 +1,12 @@
+// =================================================
+//  GETmePlots Class
+//  ROOT-based GUI for GET electronics diagnostics
+//
+//  Author:
+//    Giordano Cerizza ( cerizza@nscl.msu.edu )
+//
+// =================================================
+
 #include <stdlib.h>
 #include <iostream>
 #include <TROOT.h>
@@ -12,6 +21,7 @@
 #include <TGButtonGroup.h>
 #include <TRootEmbeddedCanvas.h>
 #include <TGComboBox.h>
+#include <TGStatusBar.h>
 #include <RQ_OBJECT.h>
 #include <TGNumberEntry.h>
 #include <TH1D.h>
@@ -19,6 +29,14 @@
 #include <TGFileDialog.h>
 #include "GETDecoder.hh"
 #include <TString.h>
+#include <TLegend.h>
+#include "TPRegexp.h"
+#include "TObjString.h"
+#include <algorithm>
+#include <functional>
+#include <iostream>
+#include <random>
+#include <string>
 
 const Int_t NCOBO=2;
 const Int_t NASAD=2;
@@ -26,7 +44,11 @@ const Int_t NAGET=4;
 const Int_t NCHN=68;
 const Int_t NTBS=2;
 
-TString filename, filename_open;
+TString filename, filename_open, filename_snap;
+
+std::random_device rd;
+std::mt19937 mt(rd());
+std::uniform_int_distribution<int> dist('a', 'z');
 
 enum CommandIdentifiers {
   M_FILE_OPEN,
@@ -64,21 +86,34 @@ private:
   Int_t               fADC=4095;
   TGTextEntry         *fmaxADC;
   TGTextBuffer        *maxadc;
+  TGStatusBar         *fStatusBar;
   
-  GETDecoder          *decoder=nullptr;
-  Int_t               numEv = 0;
-  TH1D                *h;
-  TCanvas             *fCanvas;
+  GETDecoder          *decoder = nullptr;
+  Int_t               numEv =  0;
+  TH1D                *h = nullptr;
+  TH1D                *h0 = nullptr;  
+  TH1D                *hsnap = nullptr;
+  TCanvas             *fCanvas = nullptr;
   
-  TGCheckButton       *fDebug;
+  TGCheckButton       *fDebug, *fShow;
   Bool_t              fPrint=kFALSE;
+  Bool_t              fShowH=kFALSE;
+  TString             titleC;
+  TLegend             *legend;
+  TString             leg_text;
 
+  TString         hname;
+  
 public:
   GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h);
   virtual ~GETmePlotsClass();
 
   virtual Bool_t ProcessMessage(Long_t msg, Long_t parm1, Long_t);
-  
+  void CreateCanvas();
+  void SetStatusText(const char *txt, Int_t id);
+  void SetHistoProperties(TH1D* h);
+  void ExtractRun(TString fname);
+  TString GenerateName();
 };
 
 GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
@@ -87,7 +122,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
 
   // Use hierarchical cleaning
   SetCleanup(kDeepCleanup);
-  
+
   //////////////////////////////////////////////////////////////////////////////////  
   // Create menubar and popup menus. The hint objects are used to place
   // and group the different menu widgets with respect to eachother.
@@ -254,10 +289,6 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   TGTextButton *reset = new TGTextButton(hframe4,"&Reset", 902);
   hframe4->AddFrame(reset, new TGLayoutHints(kLHintsNormal, 5,5,3,4));
 
-  // Update button
-  TGTextButton *update = new TGTextButton(hframe4,"&Update", 903);
-  hframe4->AddFrame(update, new TGLayoutHints(kLHintsNormal, 5,5,3,4));    
-
   // Exit button  
   TGTextButton *exit = new TGTextButton(hframe4,"&Exit", 904);
   hframe4->AddFrame(exit, new TGLayoutHints(kLHintsNormal, 5,5,3,4));
@@ -265,15 +296,24 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   // Check button for debug
   fDebug = new TGCheckButton(hframe4, new TGHotString("Enable/Disable\n     Debug"), 905);
   hframe4->AddFrame(fDebug, new TGLayoutHints(kLHintsNormal));
+
+  // Snapshot button  
+  TGTextButton *snap = new TGTextButton(hframe4,"&Snapshot", 906);
+  hframe4->AddFrame(snap, new TGLayoutHints(kLHintsNormal, 5,5,3,4));  
+
+  // Check button for snapshot
+  fShow = new TGCheckButton(hframe4, new TGHotString("Show"), 907);
+  hframe4->AddFrame(fShow, new TGLayoutHints(kLHintsNormal));  
   
   AddFrame(hframe4, new TGLayoutHints(kLHintsNormal, 2,2,2,2));  
 
   // Binding calls
   next->Associate(this);
   reset->Associate(this);
-  update->Associate(this);
-  exit->Associate(this);    
+  exit->Associate(this);
   fDebug->Associate(this);
+  snap->Associate(this);
+  fShow->Associate(this);  
   
   ////////////////////////////////////////////////////////////////////////////  
   // Create canvas widget
@@ -281,6 +321,18 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   
   fEcanvas = new TRootEmbeddedCanvas("Ecanvas",this,200,200);
   AddFrame(fEcanvas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10,10,10,10));
+
+  ////////////////////////////////////////////////////////////////////////////  
+  // Create status bar
+  ////////////////////////////////////////////////////////////////////////////  
+
+  Int_t parts[] = {50, 50};
+  fStatusBar = new TGStatusBar(this,200,10,kHorizontalFrame);
+  fStatusBar->SetParts(parts,2);
+  AddFrame(fStatusBar, new TGLayoutHints(kLHintsBottom | kLHintsLeft | kLHintsExpandX, 0, 0, 2, 0));
+
+  // Create canvas with empty histogram
+  CreateCanvas();
   
   // Set a name to the main frame
   SetWindowName("GETmePlots");
@@ -295,15 +347,64 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   MapWindow();
 }
 
+TString GETmePlotsClass::GenerateName()
+{
+  std::string result;
+  std::generate_n(std::back_inserter(result), 8, [&]{return dist(mt);});
+  hname = (TString)result;
+  return hname;
+}
+void GETmePlotsClass::ExtractRun(TString fname)
+{
+  TString run;
+  TObjArray *subStrL = TPRegexp("\\b(\\d+)").MatchS(fname);
+  for (Int_t i = 0; i < subStrL->GetLast(); i++) {
+    run = ((TObjString *)subStrL->At(1))->GetString();
+  }
+  leg_text = "run"+run;
+  
+}
+
+void GETmePlotsClass::SetStatusText(const char *txt, Int_t id)
+{
+  // Set text in status bar position id
+  fStatusBar->SetText(txt,id);
+}
+
+
+void GETmePlotsClass::CreateCanvas()
+{
+  fCanvas = fEcanvas->GetCanvas();
+  fCanvas->cd();
+  
+  h0 = new TH1D("init",";Time buckets;ADC channel",fTbs,0,fTbs);
+  SetHistoProperties(h0);
+  h0->Draw();
+
+  // let's assign this default histogram as default for later
+  hsnap = h0;
+  
+  fCanvas->Update();
+}
+
+void GETmePlotsClass::SetHistoProperties(TH1D* h)
+{
+  h->SetStats(0);
+  h->SetMaximum(fADC);
+  titleC = Form("Cobo %d AsAd %d Aget %d Channel %d Event %d", fCOBO, fASAD, fAGET, fCHN, numEv);
+  h->SetTitle(titleC);
+}
+
 Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 {
-  char str[4];
-  Int_t coboID;
-  Int_t asadID;
-  GETBasicFrame* frame;
-  Int_t *rawadc;
-  TString hname;
-  TString title;
+  char            str[4];
+  Int_t           coboID;
+  Int_t           asadID;
+  GETBasicFrame   *frame;
+  Int_t           *rawadc;
+  char            text_bar[100];
+  Int_t           tb_val, adc_val;
+  Int_t           binmax;
   
   // Handle messages send to the GETmePlotsClass object. E.g. all menu button messages.
   // Type of calls that are binded by id
@@ -313,7 +414,7 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
   //     - kCM_COMBOBOX: opens a button-like menu with several options
   //     - kCM_BUTTON: normal pushable button
   //     - kCM_MENU: classic file menu style
-  
+
   switch (GET_MSG(msg)) {
 
   case kC_TEXTENTRY:
@@ -354,6 +455,50 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	}
 	std::cout << "== [GETDecoder] debug mode ON " << std::endl;
 	fPrint=kTRUE;
+	break;
+      case 907:
+	// if hsnap exists and it's the default then tell the use you can't display the snapshot and turn on/off the button
+	if (hsnap->GetName() == h0->GetName()){
+	  if (fShowH){
+	    std::cout << "== [GETDecoder] snapshot mode OFF " << std::endl;
+	    fShowH=kFALSE;
+	  }
+	  else {
+	    std::cout << "== [GETDecoder] snapshot mode ON " << std::endl;
+	    fShowH=kTRUE;
+	  }
+	  std::cout << "Snapshot histogram NOT created yet! Nothing to see move along..." << std::endl;	    
+	  break;
+	}
+	// condition to remove the histogram from pad once plotted ONLY if snapshot exists and not default
+	else {
+	  if (fShowH){
+	    std::cout << "== [GETDecoder] snapshot mode OFF " << std::endl;
+	    fShowH=kFALSE;
+	    fCanvas->cd();
+	    TH1 *hh = (TH1*)gPad->GetPrimitive(hsnap->GetName());
+	    gPad->GetListOfPrimitives()->Remove(hh);
+	    TLegend *ll = (TLegend*)gPad->GetPrimitive(legend->GetName());
+	    gPad->GetListOfPrimitives()->Remove(ll);
+	    gPad->Modified();
+	    gPad->Update();
+	    break;
+	  }
+	}
+
+	std::cout << "== [GETDecoder] snapshot mode ON " << std::endl;
+	fShowH=kTRUE;
+	fCanvas->cd();
+	hsnap->SetLineColor(kRed);
+	hsnap->Draw("hist SAME");
+	legend = new TLegend(0.55, 0.65, 0.88, 0.85);
+	legend->SetTextFont(72);
+	legend->SetTextSize(0.03);
+	ExtractRun(filename_snap);
+	leg_text += Form(" C%d A%d A%d Ch%d Ev%d", fCOBO, fASAD, fAGET, fCHN, numEv);
+	legend->AddEntry(hsnap,leg_text,"l");
+	legend->Draw();
+	fCanvas->Update();
 	break;
       default:
 	break;
@@ -397,6 +542,7 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	  decoder = new GETDecoder(filename);
 	  std::cout <<"== [GETDecoder] diagnostics macro for COBO " << fCOBO << " ASAD: " << fASAD << " AGET: " << fAGET << " CHANNEL: " << fCHN << std::endl;
 	  filename_open = filename;
+	  numEv=0;
 	}
 	numEv++;
 	// Get basic frame
@@ -425,33 +571,44 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	}
 	// Access data and fill the histogram
 	rawadc = frame -> GetSample(fAGET, fCHN);
-	hname = Form("histogram_%d", numEv);
-	h = new TH1D(hname,";Time buckets;ADC channel",fTbs,0,fTbs);
+	h = new TH1D(GenerateName(),";Time buckets;ADC channel",fTbs,0,fTbs);
 	for (Int_t iTb = 0; iTb < fTbs; iTb++)
 	  h->Fill(iTb, rawadc[iTb]);
-	h->SetStats(0);
-	h->SetMaximum(fADC);
-	title = Form("Cobo %d AsAd %d Aget %d Channel %d Event %d", fCOBO, fASAD, fAGET, fCHN, numEv);
-	h->SetTitle(title);
-	h->GetXaxis()->SetTitle("Time buckets");
-	h->GetYaxis()->SetTitle("ADC channels");
+	SetHistoProperties(h);
 	h->Draw("hist");
-	
-	fCanvas = fEcanvas->GetCanvas();
-	fCanvas->cd();
+	// information on status bar about position and value at max
+	binmax = h->GetMaximumBin();
+	tb_val = h->GetXaxis()->GetBinCenter(binmax);
+	adc_val = h->GetBinContent(binmax);
+	sprintf(text_bar, "Peak at tb %d with value %d", tb_val, adc_val);
+	SetStatusText(text_bar, 1);
+	if (fShowH){
+	  hsnap->Draw("hist SAME");
+	  legend->Draw();
+	}
 	fCanvas->Update();
 	break;
       case 902:
 	decoder = nullptr;
 	decoder = new GETDecoder(filename);
+	// reset number of events and histograms
+	numEv = 0;
+	fShow->SetState(kButtonUp);
+	fShowH=kFALSE;
+	gDirectory->GetList()->Delete();
+	CreateCanvas();
+	SetStatusText("", 1);
 	break;
-      case 903:
-	h->Reset("ICESM");
-	fCanvas->cd();
-	fCanvas->Update();
-	break;	
       case 904:
 	gApplication->Terminate(0);
+      case 906:
+	if (!h){
+	  std::cout << "Histogram NOT created yet! I can't take a snapshot..." << std::endl;
+	  break;
+	}
+	hsnap = (TH1D*)h->Clone();
+	filename_snap = filename;
+	break;
       default:
 	break;
       }
@@ -470,6 +627,7 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	  snprintf(buff, sizeof(buff), "file://%s", fi.fFilename);
 	  filename = buff;
 	  dir = fi.fIniDir;
+	  SetStatusText(filename,0);
 	}
 	break;
 

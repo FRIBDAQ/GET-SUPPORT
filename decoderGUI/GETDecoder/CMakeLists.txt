@@ -26,12 +26,12 @@ ROOT_GENERATE_DICTIONARY(G__GETFormatDict
 ${CMAKE_SOURCE_DIR}/source/GETFormat/GETBasicFrame.hh
 ${CMAKE_SOURCE_DIR}/source/GETFormat/GETBasicFrameHeader.hh
 ${CMAKE_SOURCE_DIR}/source/GETFormat/GETHeaderBase.hh
-LINKDEF ${CMAKE_SOURCE_DIR}/source/GETFormat/libGETFormatLinkDef.h)
+LINKDEF ${CMAKE_SOURCE_DIR}/source/GETFormat/libGETFormatLinkDef.hh)
 
 ROOT_GENERATE_DICTIONARY(G__GETCoreDict 
 ${CMAKE_SOURCE_DIR}/source/GETCore/GETDecoder.hh
 ${CMAKE_SOURCE_DIR}/source/GETCore/GETFrameInfo.hh
-LINKDEF ${CMAKE_SOURCE_DIR}/source/GETCore/libGETCoreLinkDef.h)
+LINKDEF ${CMAKE_SOURCE_DIR}/source/GETCore/libGETCoreLinkDef.hh)
 
 #---Create a shared library with geneated dictionary
 add_library(GETDecoder SHARED
