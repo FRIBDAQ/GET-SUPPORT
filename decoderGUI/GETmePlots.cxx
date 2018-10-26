@@ -87,6 +87,11 @@ private:
   TGTextEntry         *fmaxADC;
   TGTextBuffer        *maxadc;
   TGStatusBar         *fStatusBar;
+
+  TGTextButton        *next;
+  TGTextButton        *exit;
+  TGTextButton        *reset;
+  TGTextButton        *snap;
   
   GETDecoder          *decoder = nullptr;
   Int_t               numEv =  0;
@@ -102,7 +107,8 @@ private:
   TLegend             *legend;
   TString             leg_text;
 
-  TString         hname;
+  TString             hname;
+  Bool_t              fEnable = kFALSE;
   
 public:
   GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h);
@@ -114,6 +120,9 @@ public:
   void SetHistoProperties(TH1D* h);
   void ExtractRun(TString fname);
   TString GenerateName();
+  void EnableAll();
+  void DisableAll();
+  
 };
 
 GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
@@ -136,7 +145,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   fMenuBarLayout = new TGLayoutHints(kLHintsTop | kLHintsExpandX);
   fMenuBarItemLayout = new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 4, 0, 0);
   fComboBox = new TGLayoutHints(kLHintsTop | kLHintsLeft,5,5,5,5);
-
+  
   // File menu options
   fMenuFile = new TGPopupMenu(gClient->GetRoot());
   fMenuFile->AddEntry("&Open...", M_FILE_OPEN);
@@ -186,7 +195,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   hframe->AddFrame(fCOBObox, new TGLayoutHints(kLHintsCenterX|kLHintsCenterY, 5, 10, 10, 10));
   fCOBObox->Select(1);
   fCOBObox->Resize(100, 20);  
-
+  
   // Create ASAD menu
   const char *title2 = "ASAD";  
   TGLabel *label2 = new TGLabel(hframe, title2);
@@ -282,15 +291,15 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   TGHorizontalFrame *hframe4 = new TGHorizontalFrame(this,200,40);
 
   // Next button to skip to the next event
-  TGTextButton *next = new TGTextButton(hframe4,"&Next", 901);
+  next = new TGTextButton(hframe4,"&Next", 901);
   hframe4->AddFrame(next, new TGLayoutHints(kLHintsNormal, 5,5,3,4));
 
   // Reset button
-  TGTextButton *reset = new TGTextButton(hframe4,"&Reset", 902);
+  reset = new TGTextButton(hframe4,"&Reset", 902);
   hframe4->AddFrame(reset, new TGLayoutHints(kLHintsNormal, 5,5,3,4));
 
   // Exit button  
-  TGTextButton *exit = new TGTextButton(hframe4,"&Exit", 904);
+  exit = new TGTextButton(hframe4,"&Exit", 904);
   hframe4->AddFrame(exit, new TGLayoutHints(kLHintsNormal, 5,5,3,4));
 
   // Check button for debug
@@ -298,7 +307,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   hframe4->AddFrame(fDebug, new TGLayoutHints(kLHintsNormal));
 
   // Snapshot button  
-  TGTextButton *snap = new TGTextButton(hframe4,"&Snapshot", 906);
+  snap = new TGTextButton(hframe4,"&Snapshot", 906);
   hframe4->AddFrame(snap, new TGLayoutHints(kLHintsNormal, 5,5,3,4));  
 
   // Check button for snapshot
@@ -333,6 +342,9 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
 
   // Create canvas with empty histogram
   CreateCanvas();
+
+  // Disable all the buttons except next and the file menu
+  DisableAll();
   
   // Set a name to the main frame
   SetWindowName("GETmePlots");
@@ -347,6 +359,38 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   MapWindow();
 }
 
+void GETmePlotsClass::DisableAll()
+{
+  fCOBObox->SetEnabled(kFALSE);
+  fASADbox->SetEnabled(kFALSE);
+  fAGETbox->SetEnabled(kFALSE);
+  fCHNbox->SetEnabled(kFALSE);
+  fTBbox->SetEnabled(kFALSE);
+  fmaxADC->SetEnabled(kFALSE);
+  reset->SetEnabled(kFALSE);
+  fDebug->SetEnabled(kFALSE);
+  snap->SetEnabled(kFALSE);
+  fShow->SetEnabled(kFALSE);
+  
+  fEnable =kFALSE;
+}
+
+void GETmePlotsClass::EnableAll()
+{
+  fCOBObox->SetEnabled(kTRUE);
+  fASADbox->SetEnabled(kTRUE);
+  fAGETbox->SetEnabled(kTRUE);
+  fCHNbox->SetEnabled(kTRUE);
+  fTBbox->SetEnabled(kTRUE);
+  fmaxADC->SetEnabled(kTRUE);
+  reset->SetEnabled(kTRUE);
+  fDebug->SetEnabled(kTRUE);
+  snap->SetEnabled(kTRUE);
+  fShow->SetEnabled(kTRUE);
+  
+  fEnable =kTRUE;
+}
+
 TString GETmePlotsClass::GenerateName()
 {
   std::string result;
@@ -354,6 +398,7 @@ TString GETmePlotsClass::GenerateName()
   hname = (TString)result;
   return hname;
 }
+
 void GETmePlotsClass::ExtractRun(TString fname)
 {
   TString run;
@@ -535,8 +580,10 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
     case kCM_BUTTON:
       switch (parm1) {
       case 901:
-	if (filename == "")
-	  std::cout << "Please open a file...(File->Open). Try again!" << std::endl;
+	if (filename == ""){
+	  std::cout << "\t\t\t\t >>> Please open a file...(File->Open). Try again! <<<" << std::endl;
+	  break;
+	}
 	// Create GETDecoder only the first time
 	if (!decoder || (filename != filename_open)){
 	  decoder = new GETDecoder(filename);
@@ -628,6 +675,8 @@ Bool_t GETmePlotsClass::ProcessMessage(Long_t msg, Long_t parm1, Long_t)
 	  filename = buff;
 	  dir = fi.fIniDir;
 	  SetStatusText(filename,0);
+	  if (!fEnable)
+	    EnableAll();
 	}
 	break;
 
