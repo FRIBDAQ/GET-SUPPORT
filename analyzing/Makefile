@@ -14,6 +14,11 @@ process: process.cpp processor.cpp processor.h AnalyzeFrame.cpp AnalyzeFrame.h
 	-L/usr/opt/GET/lib -I/usr/opt/GET/include -Wl,-rpath=/usr/opt/GET/lib \
 	-lMultiFrame -g
 
+install:
+	install process $(PREFIX)/bin/hitmaker
+	install -d $(PREFIX)/include
+	install AnalyzeFrame.h $(PREFIX)/include
+
 
 clean:
 	rm -f process

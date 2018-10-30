@@ -1229,6 +1229,119 @@ lo        Link encap:Local Loopback
     </refsect1>
    
    </refentry>
+   <refentry>
+    <refmeta>
+        <refentrytitle>hitmaker</refentrytitle>
+        <manvolnum>1get</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>hitmaker</refname>
+        <refpurpose>Create hit ring items from raw GET ring items.</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+<command>hitmaker <replaceable>inputuri outputuri</replaceable></command>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            hitmaker takes a source of raw GET ring items and converts them
+            into a stream of ring items containing hits.  For the output format,
+            see <literal>Output Ring Items</literal> below.
+            <parameter>inputuri</parameter> specifies the source of data.  This
+            can be either a <literal>file:</literal> or <literal>tcp:</literal>
+            URI to accept data from an offline file or online ring buffer
+            respectively.
+            <parameter>outputuri</parameter> specifies where the output
+            ring items will be put. Again <literal>file:</literal> or
+            <literal>tcp:</literal> URIs can be used, however if a
+            <literal>tcp:</literal> URI is specified, the host must be
+            <literal>localhost</literal>.
+        </para>
+        <para>
+            All non <literal>PHYSICS_EVENT</literal> items encounterd on the
+            input are passsed without modification to the output.
+            <literal>PHYSICS_EVENT</literal> items retain the same body
+            header as the input item (timestamp and source id), however
+            the output ring item body is a set of hits computed from the traces
+            that are present in the input item.  See
+            <literal>Output Ring Itesm</literal> below.
+        </para>
+    </refsect1>
+    <refsect1>
+        <title>Output Ring Items</title>
+        <para>
+            The body of output <literal>PHYSICS_EVENT</literal> items is a leading
+            <type>uint32_t</type> followed by a sequence of
+            <type>NSCLGET::Hit</type> items as defined in
+            <filename>/usr/opt/NSCLGET/include/AnalyzeFrame.h</filename>.
+            The leading <type>uint32_t</type> specifies the number of hits to
+            follow.
+        </para>
+        <para>
+           The <structfield>s_cobo</structfield>, <structfield>s_asad</structfield>,
+           <structfield>s_aget</structfield> and <structfield>s_chan</structfield>
+           define which global channel the hit comes from.  The following
+           items in each <type>NSCLGET::Hit</type> are computed from
+           the raw traces:
+        </para>
+        <variablelist>
+            <varlistentry>
+                <term><structfield>s_time</structfield></term>
+                <listitem>
+                    <para>
+                        The centroid in time of the baseline subtracted
+                        trace.  See below for baseline determination.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><structfield>s_peak</structfield></term>
+                <listitem>
+                    <para>
+                        The height of the trace peak.  This is found by taking
+                        the sample with the largest value, the sample on each
+                        side of it and performing a Lagrange three point
+                        interpolation.  As such the resolution of this height
+                        <emphasis>should</emphasis> be better than that of the
+                        ADC.  
+                    </para>
+                    <para>
+                        Note that this computation is performed on a baseline
+                        subtracted waveform.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term>
+                    <structfield>s_integral</structfield>
+                </term>
+                <listitem>
+                    <para>
+                        Integration of the background subtracted waveform.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+        <para>
+            GET pulses can sit on a considerable baseline.  The computations
+            described above are done on a trace from which the estimated baseline
+            is subtracted.  The baseline is determined by taking the minimum value
+            of the leftmost and rightmost samples in the trace.  This works
+            quite well for unsuppressed data where the full trace is present.
+            It's not so clear this is a good estimator for suppressed data
+            as the idea then is to suppress data that are at or near the
+            baseline.  Nonethelesss, without any outside information that's the
+            best we can do. 
+        </para>
+        <para>
+            The assumed baseline should only influence the peak value and the
+            integration.
+        </para>
+    </refsect1>
+   
+   </refentry>
 </chapter>
 <chapter id='ch.GETdiag'>
   <title id='ch.GETdiag.title'>GETmePlots: diagnostics GUI for GET electronics</title>
