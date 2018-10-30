@@ -16,3 +16,6 @@ $(GETROOT)/libGETDecoder.so:
 clean:
 	rm *.o GETmePlots
 	cd $(GETROOT) && $(MAKE) clean
+
+install: all
+	install GETmePlots $(PREFIX)/bin
