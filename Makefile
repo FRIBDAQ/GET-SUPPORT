@@ -3,7 +3,7 @@
 #
 
 subdirs=ringtograw runcontrol insertstatechange ringmerge router readoutgui \
-	analyzing docs 
+	analyzing docs decoderGUI
 
 all:
 	for d in $(subdirs) ; do (cd $$d; make all) ;done
