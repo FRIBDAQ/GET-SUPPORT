@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace>
+	<Test id="*">
+		<Type range="{Acq2pMode, Default, PeakingTime, StdAcquisition}">StdAcquisition</Type>
+		<Setup id="*" />
+		<Setup id="Hardware">
+			<Path type="string"></Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path type="string"></Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>/tmp</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="*">
+				<addressField id="0" range="[0, 255]">192</addressField>
+				<addressField id="1">168</addressField>
+				<addressField id="2">0</addressField>
+				<addressField id="3">0</addressField>
+				<port range="[0, 65535]">46001</port>
+				<addressField id="*">255</addressField>
+			</IpNode>
+			<IpNode id="ECC">
+				<port>46002</port>
+			</IpNode>
+			<IpNode id="DAQ">
+				<port>46003</port>
+			</IpNode>
+			<IpNode id="TARGET" />
+		</Setup>
+	</Test>
+	<Test id="CrdcCobo1">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>configure-e15037-fixcobo02.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="0">35</addressField>
+				<addressField id="1">9</addressField>
+				<addressField id="2">56</addressField>
+				<addressField id="3">250</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="pulser">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>pulser.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>/user/e18510/readout</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="3">2</addressField>
+				<addressField id="2">200</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="ExternalTrigger">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>exttrigger.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">200</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="partialreadout-pulser">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>partialpulser.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>/user/e18510/readout</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">200</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="pulsernew">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>pulsernew.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>/user/e18510/readout</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="3">2</addressField>
+				<addressField id="2">200</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="partial-jorge">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>partial-jorge.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">200</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+</Workspace>

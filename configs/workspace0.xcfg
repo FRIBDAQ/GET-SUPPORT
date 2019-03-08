@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace>
+	<Test id="*">
+		<Type range="{Acq2pMode, Default, PeakingTime, StdAcquisition}">StdAcquisition</Type>
+		<Setup id="*" />
+		<Setup id="Hardware">
+			<Path type="string"></Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path type="string"></Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>/tmp</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="*">
+				<addressField id="0" range="[0, 255]">192</addressField>
+				<addressField id="1">168</addressField>
+				<addressField id="2">0</addressField>
+				<addressField id="3">0</addressField>
+				<port range="[0, 65535]">46001</port>
+				<addressField id="*">255</addressField>
+			</IpNode>
+			<IpNode id="ECC">
+				<port>46002</port>
+			</IpNode>
+			<IpNode id="DAQ">
+				<port>46003</port>
+			</IpNode>
+			<IpNode id="TARGET" />
+		</Setup>
+	</Test>
+	<Test id="test">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>/Users/attpc/GET-software/GET-20160314/share/get-bench/config/hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>configure-pedestals-all.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="2">41</addressField>
+				<addressField id="3">12</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="2">41</addressField>
+				<addressField id="3">42</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="TestBench">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>/Users/attpc/GET-20140516/software/pkg/share/get-bench/config/hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>pedestals.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="2">41</addressField>
+				<addressField id="3">12</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="2">41</addressField>
+				<addressField id="3">19</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="Aki">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>/Users/attpc/GET-20140516/software/pkg/share/get-bench/config/hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>configure-nobeam-all.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="2">41</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="2">41</addressField>
+				<addressField id="3">44</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="testcobos">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>/Users/attpc/GET-software/GET-20160314/share/get-bench/config/hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>configure-e15037-pulser.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="2">41</addressField>
+				<addressField id="3">12</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="2">41</addressField>
+				<addressField id="3">41</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="FixCobo">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>/Users/attpc/GET-software/GET-20161214/share/get-bench/config/hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>configure-e15037-fixcobo02.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="2">41</addressField>
+				<addressField id="3">12</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="2">41</addressField>
+				<addressField id="3">42</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="fixcobo">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>configure-e15037-fixcobo.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>.</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="2">200</addressField>
+				<addressField id="3">2</addressField>
+				<port>46002</port>
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+	<Test id="crdc1Cobo">
+		<Type>Default</Type>
+		<Setup id="Hardware">
+			<Path>hardwareDescription_fullCoBoStandAlone.xcfg</Path>
+		</Setup>
+		<Setup id="Conditions">
+			<Path>/user/e18510/readout/configs/pulserthgem.xcfg</Path>
+		</Setup>
+		<Setup id="Data">
+			<Path>/user/e18510/stagearea/current</Path>
+		</Setup>
+		<Setup id="Network">
+			<IpNode id="ECC">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">200</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+			<IpNode id="TARGET">
+				<addressField id="0">10</addressField>
+				<addressField id="1">50</addressField>
+				<addressField id="2">100</addressField>
+				<addressField id="3">2</addressField>
+			</IpNode>
+		</Setup>
+	</Test>
+</Workspace>
