@@ -392,6 +392,7 @@ proc ::GET::emitBegin {id num title} {
 	--source-id=$sourceid \
         --type=begin"
     
+    puts "Emitting begin run on '$statehost' using '$command'"
     ReadoutGUIPanel::Log GET log [ssh::ssh $statehost $command]
     
     # If that worked we can update the sources dict:
@@ -475,6 +476,8 @@ proc ::GET::emitEndRun state {
     set duration [expr {[clock seconds] - [dict get $state runstarttime]}]
 
     set path [file join $::GET::getNsclDaqBindir insertstatechange]
+    
+    puts "Emitting end run at: '$statehost' using '$path --ring-$statering'"
     
     ReadoutGUIPanel::Log GET log [ssh::ssh $statehost "$path --ring=$statering \
        --run=$num --title=\"$title\" --source-id=$sourceid \
