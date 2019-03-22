@@ -1,3 +1,0 @@
-/scratch/cerizza/GET-SUPPORT/decoderGUI/GETDecoder/build/CMakeFiles/GETDecoder.dir
-/scratch/cerizza/GET-SUPPORT/decoderGUI/GETDecoder/build/CMakeFiles/G__GETCoreDict.dir
-/scratch/cerizza/GET-SUPPORT/decoderGUI/GETDecoder/build/CMakeFiles/G__GETFormatDict.dir
