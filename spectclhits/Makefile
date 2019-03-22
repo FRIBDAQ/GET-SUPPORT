@@ -8,7 +8,7 @@ include $(INSTDIR)/etc/SpecTcl_Makefile.include
 
 #  ../analyzing has the AnalyzeFrame.h header which defines NSCLGET::Hit.
 
-USERCXXFLAGS=-I../analyzing
+USERCXXFLAGS=-I../analyzing -I../../include
 
 #  If you have any switches you need to add to the default c compilation rules,
 #  add them to the defintion below:
