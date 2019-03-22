@@ -204,7 +204,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   fMenuView->Associate(this);
   
   //////////////////////////////////////////////////////////////////////////////////
-  // Create a horizontal frame widget with buttons for COBO, ASAD, AGET
+  // Create a horizontal frame widget with buttons for COBO
   //////////////////////////////////////////////////////////////////////////////////
 
   TGHorizontalFrame *hframe = new TGHorizontalFrame(this,200,40);
@@ -223,20 +223,6 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   fCOBObox->Select(1);
   fCOBObox->Resize(100, 20);  
   
-  // Create AGET menu
-  const char *title3 = "AGET";  
-  TGLabel *label3 = new TGLabel(hframe, title3);
-  hframe->AddFrame(label3, new TGLayoutHints(kLHintsLeft | kLHintsCenterY, 10, 10, 10, 10));
-  
-  fAGETbox = new TGComboBox(hframe, 803);
-  for (Int_t i = 0; i < NAGET; i++) {
-    sprintf(tmpAGET, "AGET %d", i);
-    fAGETbox->AddEntry(tmpAGET, i+1);
-  }
-  hframe->AddFrame(fAGETbox, new TGLayoutHints(kLHintsCenterX|kLHintsCenterY, 5, 10, 10, 10));
-  fAGETbox->Select(1);
-  fAGETbox->Resize(100, 20);  
-
   // Next button to skip to the next event
   next = new TGTextButton(hframe,"&Next", 901);
   hframe->AddFrame(next, new TGLayoutHints(kLHintsNormal, 5,5,3,4));
@@ -269,7 +255,6 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
 
   // Binding calls
   fCOBObox->Associate(this);
-  fAGETbox->Associate(this);
   fHostRing->Associate(this);
   
   next->Associate(this);
@@ -284,7 +269,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   TGHorizontalFrame *hframeVH2 = new TGHorizontalFrame(hframeV, 5, 5);
 
   // Create ASAD menu
-  const char *title2 = "ASAD";  
+  const char *title2 = "ASAD";
   TGLabel *label2 = new TGLabel(hframeVH, title2);
   hframeVH->AddFrame(label2, new TGLayoutHints(kLHintsNormal, 5, 5, 0, 0));
 
@@ -296,20 +281,34 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
   fASADbox->Select(1);
   fASADbox->Resize(100, 20);
   hframeVH->AddFrame(fASADbox, new TGLayoutHints(kLHintsNormal, 0, 0, 0, 0));
-  hframeV->AddFrame(hframeVH, new TGLayoutHints(kLHintsNormal, 5, 5, 1, 1));  
-  
+
+  // Create AGET menu
+  const char *title3 = "AGET";
+  TGLabel *label3 = new TGLabel(hframeVH, title3);
+  hframeVH->AddFrame(label3, new TGLayoutHints(kLHintsNormal, 5, 5, 1, 1));
+
+  fAGETbox = new TGComboBox(hframeVH, 803);
+  for (Int_t i = 0; i < NAGET; i++) {
+    sprintf(tmpAGET, "%d", i);
+    fAGETbox->AddEntry(tmpAGET, i+1);
+  }
+  fAGETbox->Select(1);
+  fAGETbox->Resize(100, 20);
+  hframeVH->AddFrame(fAGETbox, new TGLayoutHints(kLHintsNormal, 0, 0, 0, 0));
+  hframeV->AddFrame(hframeVH, new TGLayoutHints(kLHintsNormal, 5, 5, 1, 1));
+
   // Create CHN menu
-  const char *title4 = "Channel";  
+  const char *title4 = "Channel";
   TGLabel *label4 = new TGLabel(hframeVH2, title4);
   hframeVH2->AddFrame(label4, new TGLayoutHints(kLHintsNormal, 5, 5, 0, 0));
-  
+
   fCHNbox = new TGComboBox(hframeVH2, 804);
   for (kk = 0; kk < NCHN; kk++) {
     sprintf(tmpCHN, "Channel %d", kk);
     fCHNbox->AddEntry(tmpCHN, kk+1);
   }
   fCHNbox->Select(1);
-  fCHNbox->Resize(100, 20);  
+  fCHNbox->Resize(100, 20);
   hframeVH2->AddFrame(fCHNbox, new TGLayoutHints(kLHintsNormal, 5, 5, 0, 0));
   hframeV->AddFrame(hframeVH2, new TGLayoutHints(kLHintsNormal, 5, 5, 1, 1));
 
@@ -354,6 +353,7 @@ GETmePlotsClass::GETmePlotsClass(const TGWindow *p,UInt_t w,UInt_t h)
 
   // Binding calls
   fASADbox->Associate(this);  
+  fAGETbox->Associate(this);
   fCHNbox->Associate(this);  
   zoom->Associate(this);
   fTBbox->Associate(this);
