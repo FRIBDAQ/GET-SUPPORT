@@ -280,8 +280,12 @@ CreateHits::addHitFromCompressedData(
     // The assumption is that between these is a nice peak:
     
     size_t nSamples = chsamples.size();
-    double left = chsamples[0].second;
-    double right = chsamples.back().second;
+    
+    // Note that the left and right-most samples sometimes have a big spike
+    // according to Jorge.  Therefore we look at the second and the
+    // and next to last sample.
+    double left = chsamples[1].second;
+    double right = chsamples[chsamples.size()-2].second;
     double offset = fmin(left, right);
     
     // Figure out where the centroid is
@@ -293,7 +297,7 @@ CreateHits::addHitFromCompressedData(
     double maxval = 0.0;
     unsigned maxpos = 0;
     
-    for (unsigned i = 0; i < nSamples; i++) {
+    for (unsigned i = 1; i < nSamples-1; i++) {
         double bin = chsamples[i].first;
         double ht  = chsamples[i].second - offset;
         
@@ -342,8 +346,8 @@ CreateHits::interpolatePeak(
     double peak = data[maxpos].second  - offset;
     
     // Do we have enough points to do the interpolation and peak solve?
-    
-    if ((maxpos > 0) && ((maxpos + 1)< data.size())) {
+    // Ignore the outer channels for interpolation.
+    if ((maxpos > 1) && ((maxpos + 2) < data.size())) {
         // can interpolate.
         
         // Get the three points in the parabola:
