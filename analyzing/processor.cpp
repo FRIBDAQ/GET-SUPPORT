@@ -115,6 +115,8 @@ CRingItemProcessor::processStateChangeItem(CRingStateChangeItem& item)
     std::cout << "Occured at: " << std::ctime(&tm)
         << " " << item.getElapsedTime() << " sec. into the run\n";
     m_sink.putItem(item);
+    item.setBodyHeader(item.getEventTimestamp(), item.getSourceId()+1, item.getBarrierType());
+    m_sink.putItem(item);    // Clone for the second ASAD's sid.
 }
 /**
  * processTextItem
@@ -145,14 +147,24 @@ CRingItemProcessor::processTextItem(CRingTextItem& item)
 void
 CRingItemProcessor::processEvent(CPhysicsEventItem& item)
 {
+
+
+
+ 
     std::vector<NSCLGET::Hit> hits =
         NSCLGET::analyzeFrame(item.getBodySize(), item.getBodyPointer());
-        
-    // Make a ring item and put the hits in verbatiom.
+
+    // If there are not hits, don't keep the event:
+
+    if (hits.size() == 0) return;
     
+    // Make a ring item and put the hits in verbatim. The source id will be the input source id with the
+    // asad of the first hit added (since we only get hits from one cobo/asad combo at a time.
+
+    int asad = hits[0].s_asad;
     size_t requiredSize = hits.size() * sizeof(NSCLGET::Hit) + 100;
     
-    CPhysicsEventItem hitItem(item.getEventTimestamp(), item.getSourceId(), item.getBarrierType(), requiredSize);
+    CPhysicsEventItem hitItem(item.getEventTimestamp(), item.getSourceId() + asad, item.getBarrierType(), requiredSize);
     uint8_t* p = static_cast<uint8_t*>(hitItem.getBodyCursor());
     uint32_t nhits = hits.size();
     memcpy(p, &nhits, sizeof(uint32_t));
