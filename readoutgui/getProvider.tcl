@@ -388,9 +388,9 @@ proc ::GET::emitBegin {id num title} {
     
     set path [file join $::GET::getNsclDaqBindir insertstatechange]
 
-    set command "$path --ring=$statering --run=$num --title=\"$title\" \
+    set command [list $path --ring=$statering --run=$num --title=\"$title\" \
 	--source-id=$sourceid \
-        --type=begin"
+		     --type=begin]
     
     puts "Emitting begin run on '$statehost' using '$command'"
     ReadoutGUIPanel::Log GET log [ssh::ssh $statehost $command]
@@ -477,11 +477,11 @@ proc ::GET::emitEndRun state {
 
     set path [file join $::GET::getNsclDaqBindir insertstatechange]
     
-    puts "Emitting end run at: '$statehost' using '$path --ring-$statering'"
+    puts "Emitting end run at: '$statehost' using '[list $path --ring-$statering]'"
     
-    ReadoutGUIPanel::Log GET log [ssh::ssh $statehost "$path --ring=$statering \
+    ReadoutGUIPanel::Log GET log [ssh::ssh $statehost [list $path --ring=$statering \
        --run=$num --title=\"$title\" --source-id=$sourceid \
-	--type=end --offset $duration"    ]
+							   --type=end --offset $duration]    ]
 
 }
 ##
