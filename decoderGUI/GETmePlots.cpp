@@ -106,6 +106,7 @@ GETmePlots::createHistograms()
 	h[k][j][i]->SetStats(0);
 	h[k][j][i]->SetLineColor(2);
 	h[k][j][i]->SetLineWidth(3);
+	h[k][j][i]->SetMinimum(0);	
 	h[k][j][i]->SetMaximum(fADC);
 	h[k][j][i]->SetTitleSize(5,"T");
 	h[k][j][i]->SetTitle(tmpTitle);
@@ -274,7 +275,6 @@ FillTheTab::DrawHistograms(int asad, int aget)
 {
   Int_t z = 0;
   // Create histograms
-  canvas[asad][aget]->getCanvas(asad,aget)->Divide(9,8);
   for (Int_t i=0; i<NCHN; i++){
     z++;
     canvas[asad][aget]->getCanvas(asad,aget)->cd(z);
@@ -283,6 +283,7 @@ FillTheTab::DrawHistograms(int asad, int aget)
     else 
       tmpTitle = Form("AsAd %d Aget %d Channel %d Event %d", asad, aget, i, (numEv/2));
     h[asad][aget][i]->SetBins(fTbs, 0, fTbs);
+    h[asad][aget][i]->SetMinimum(0);
     h[asad][aget][i]->SetMaximum(fADC);
     h[asad][aget][i]->SetTitle(tmpTitle);
     h[asad][aget][i]->Draw("histo");
@@ -298,6 +299,7 @@ FillTheTab::UpdateHistograms(int asad, int aget)
     z++;
     canvas[asad][aget]->getCanvas(asad,aget)->cd(z);
     h[asad][aget][i]->SetBins(fTbs, 0, fTbs);
+    h[asad][aget][i]->SetMinimum(0);
     h[asad][aget][i]->SetMaximum(fADC);
     h[asad][aget][i]->Draw("histo");
   }
@@ -455,8 +457,8 @@ FillTheTab::FillTheTab(int asad, int aget, QWidget *parent)
   // QMainCanvas constructor.
   QVBoxLayout *l = new QVBoxLayout(this);
   canvas[asad][aget] = new QGCanvas(asad, aget, this);
+  canvas[asad][aget]->getCanvas(asad,aget)->Divide(9,8);
   l->addWidget(canvas[asad][aget]);      
-  
 }
 
 QGCanvas::QGCanvas(int asad, int aget, QWidget *parent)
@@ -590,6 +592,8 @@ FillTheTab::Update()
 	std::cout << "I need to plot new histograms..." << std::endl;
       }
       DrawHistograms(ASADtab, AGETtab);
+      oldASADtab = ASADtab;
+      oldAGETtab = AGETtab;
     }
     else {
       if (fDebug)
@@ -633,6 +637,9 @@ GETmePlots::Snapshot()
 void
 GETmePlots::Next()
 {
+  fDone = false;
+
+  
   if (fileName == ""){
     std::cout << "\t\t\t\t >>> Please open a file...(File->Open file) or attach an online ring buffer. Try again! <<<" << std::endl;
     return;
@@ -674,11 +681,12 @@ GETmePlots::Draw()
   if (fDebug)
     std::cout << std::endl;
 
-  // reset histograms
-  for (Int_t k=0; k<NASAD; k++)
-    for (Int_t j=0; j<NAGET; j++)
-      for (Int_t i=0; i<NCHN; i++)
-	h[k][j][i]->Reset("ICESM");  
+  // Reset all histograms
+  for (Int_t j=0; j<NAGET; j++){
+    for (Int_t i=0; i<NCHN; i++){
+	h[ASADtab][j][i]->Reset("ICESM");
+    }
+  }
   
   for(auto&& hit: frame){
     coboID = hit.s_cobo;
@@ -753,6 +761,7 @@ FillTheTab::zoomHistograms()
   htmp = (TH1D*)h[fASAD][fAGET][fCHN]->Clone();
   htmp->SetTitle(Form("AsAd %d Aget %d Channel %d Event %d", fASAD, fAGET, fCHN, 0));
   htmp->SetBins(fTbs, 0, fTbs);
+  htmp->SetMinimum(0);
   htmp->SetMaximum(fADC);
   htmp->Draw("histo");
   ctmp->getCanvas(fASAD,fAGET)->Modified();

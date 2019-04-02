@@ -90,6 +90,7 @@ GETDecoder::SetDataSink(std::string src, std::string output, int nritems = 100){
   counter = 0;
 
   // The new data source is the file data sink
+  delete m_pDataSource;
   SetUrls(output);
   
   return output;
