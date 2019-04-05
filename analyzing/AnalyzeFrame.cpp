@@ -280,13 +280,29 @@ CreateHits::addHitFromCompressedData(
     // The assumption is that between these is a nice peak:
     
     size_t nSamples = chsamples.size();
-    
+    double offset   = 0;
+    double left;
+    double right;
+    // Deal with reduced data where we may not have enough samples
+    // to do our simplistic offset computation:
+
+    if (nSamples == 1) {
+      offset = chsamples[0].second;
+    } else if (nSamples == 2) {
+      left = chsamples[0].second;
+      right= chsamples[1].second;
+      offset = fmin(left, right);
+    } else {
+      left = chsamples[1].second;
+      right= chsamples[chsamples.size() - 2].second;
+      offset = fmin(left, right);
+    }
     // Note that the left and right-most samples sometimes have a big spike
     // according to Jorge.  Therefore we look at the second and the
     // and next to last sample.
-    double left = chsamples[1].second;
-    double right = chsamples[chsamples.size()-2].second;
-    double offset = fmin(left, right);
+    //    double left = chsamples[1].second;
+    //    double right = chsamples[chsamples.size()-2].second;
+    //    double offset = fmin(left, right);
     
     // Figure out where the centroid is
     // and the integral of the data:

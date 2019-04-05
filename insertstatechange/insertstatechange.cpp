@@ -42,10 +42,13 @@ main(int argc, char** argv)
     // Figure out the type of state change from type_arg:
     
     uint32_t itemType;
+    uint32_t barrierType;
     if (std::string("begin") == parsedArgs.type_arg) {
         itemType = BEGIN_RUN;
+	barrierType = 1;
     } else if (std::string("end") == parsedArgs.type_arg) {
         itemType = END_RUN;
+	barrierType = 2;
     } else {
         std::cerr << "Invalid state change --type '" << parsedArgs.type_arg
             << "' must be 'begin' or 'end'\n";
@@ -82,7 +85,7 @@ main(int argc, char** argv)
         std::unique_ptr<CRingBuffer>
             ring(new CRingBuffer(ringName, CRingBuffer::producer));
         CRingStateChangeItem item(
-            NULL_TIMESTAMP, sourceId, 0,
+            NULL_TIMESTAMP, sourceId, barrierType, //
             itemType, runNum, offset, now, title
         );
         item.commitToRing(*ring);
