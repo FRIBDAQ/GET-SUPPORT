@@ -17,7 +17,7 @@ Int_t    fCOBO = 0;
 Int_t    fASAD = 0;
 Int_t    fAGET = 0;
 Int_t    fCHN = 0;
-Int_t    fTbs = 256;
+Int_t    fTbs = 512;
 Int_t    fADC = 4095;
 TString  tmpTitle = "";
 Int_t    numEv = 0;
@@ -33,6 +33,9 @@ TString  h_name[NASAD][NAGET][NCHN];
 TH1D     *h[NASAD][NAGET][NCHN];
 QGCanvas *canvas[NASAD][NAGET];
 TCanvas  *fCanvas[NASAD][NAGET];
+QRootCanvas *ctmp;
+TCanvas  *canvastmp;
+QPushButton *zoom;
 
 Int_t           coboID = 0;
 Int_t           asadID = 0;
@@ -139,7 +142,7 @@ GETmePlots::createConnections()
   // CHN box
   connect(fCHNbox, SIGNAL(currentIndexChanged(int)), this, SLOT(CHNindexChanged()));
   // TB box
-  connect(fTBbox, SIGNAL(currentIndexChanged(int)), this, SLOT(TBindexChanged()));     
+  connect(fTBbox, SIGNAL(textChanged(const QString &)), this, SLOT(TBvalueChanged(const QString &)));     
   // Max ADC
   connect(fADCvalue, SIGNAL(textChanged(const QString &)), this, SLOT(ADCvalueChanged(const QString &)));
   // Zoom button
@@ -148,10 +151,10 @@ GETmePlots::createConnections()
   connect(tabWidget, SIGNAL(currentChanged(int)), this, SLOT(TabSelected()));
   // Online option identifier
   connect(fOnlineCheck, SIGNAL(toggled(bool)), fOnlinePath, SLOT(setEnabled(bool)));
-  connect(fOnlineCheck, SIGNAL(toggled(bool)), buttons[0], SLOT(setEnabled(bool)));  
+  connect(fOnlineCheck, SIGNAL(toggled(bool)), buttons[0], SLOT(setEnabled(bool)));
   // Online ringbuffer
   connect(fOnlinePath, SIGNAL(textChanged(const QString &)), this, SLOT(OnlineSelected(const QString &)));  
-  
+
 }
 
 void
@@ -234,9 +237,8 @@ GETmePlots::CHNindexChanged()
 }
 
 void
-GETmePlots::TBindexChanged()
+GETmePlots::TBvalueChanged(const QString & text)
 {
-  QString text = fTBbox->currentText();
   fTbs = text.split(" ")[0].toInt();
   if (fDebug)
     std::cout << "You have selected " << fTbs << " time buckets" << std::endl;  
@@ -264,6 +266,8 @@ GETmePlots::OnlineSelected(const QString & text)
 {
   fileName = text.toUtf8().constData();
   fileName = "tcp://"+fileName;
+  
+  std::cout << fileName << std::endl;
   if (fDebug)
     fileName = "file:///scratch/cerizza/GET-SUPPORT/decoderGUIv3/run-0050-00.evt";
   if (fileName != "")
@@ -373,6 +377,7 @@ GETmePlots::createTopGroupBox()
   QGridLayout *lo = new QGridLayout;
   fOnlineLabel = new QLabel(tr("tcp://")); 
   fOnlinePath = new QLineEdit;
+  fOnlinePath->setText(tr("spdaq08/GET"));
   lo->addWidget(fOnlineLabel, 0, 0);
   lo->addWidget(fOnlinePath, 0, 1);  
   fOnlineCheck = new QCheckBox(tr("&Enable/Disable Online"));
@@ -418,10 +423,8 @@ GETmePlots::createBottomGroupBox()
 
   // Time bucket selection
   fTbsLabel = new QLabel(tr("Time buckets"));    
-  fTBbox = new QComboBox(new QLabel(tr("")));
-  for(int i = 1; i < 3; i++)
-    fTBbox->addItem(QString::number(i*256));
-  fTBbox->setCurrentIndex(0);
+  fTBbox = new QLineEdit;
+  fTBbox->setText(QString::number(fTbs));
   lo->addWidget(fTbsLabel, 0, 3);  
   lo->addWidget(fTBbox, 0, 4);  
 
@@ -468,7 +471,6 @@ QGCanvas::QGCanvas(int asad, int aget, QWidget *parent)
 
   // set options needed to properly update the canvas when resizing the widget
   // and to properly handle context menus and momoyuse move events
-  //  setAttribute(Qt::WA_OpaquePaintEvent, true);
   setMinimumSize(300, 200);
   setUpdatesEnabled(kFALSE);
   setMouseTracking(kTRUE);
@@ -487,7 +489,8 @@ void QGCanvas::resizeEvent( QResizeEvent * )
     fCanvas[ASADtab][AGETtab]->Resize();
     fCanvas[ASADtab][AGETtab]->Update();
   }
-
+  this->update();
+  //  this->repaint();  
 }
 
 void QGCanvas::paintEvent( QPaintEvent * )
@@ -497,6 +500,8 @@ void QGCanvas::paintEvent( QPaintEvent * )
     fCanvas[ASADtab][AGETtab]->Resize();
     fCanvas[ASADtab][AGETtab]->Update();
   }
+  this->update();
+  //  this->repaint();  
 }
 
 void QGCanvas::mouseMoveEvent(QMouseEvent *e)
@@ -608,7 +613,7 @@ void
 FillTheTab::Zoom()
 {
   zoomHistograms();
-  updateCanvas();
+  //  updateCanvas();
 }
 
 void
@@ -617,21 +622,29 @@ GETmePlots::Snapshot()
   fSnapshot = true;
   numEv = 0;
   
+  QString msg = fOnlinePath->text();
+  fileName = msg.toUtf8().constData();
+  fileName = "tcp://"+fileName;
+
+  std::cout << fileName << std::endl;
+  
   if (fileName == ""){
     std::cout << "\t\t\t\t >>> Please open a file...(File->Open file) or attach an online ring buffer. Try again! <<<" << std::endl;
     return;
   }
+
+  if (fileName != "")
+    EnableAll();
   
   if (!decoder || (fileName != fileName_open)){
     if (fDebug)
       std::cout << "Inside GETmePlots::Snapshot !decoder" << std::endl;
     decoder = GETDecoder::getInstance();
-    fileName = decoder->SetDataSink(fileName, "file:///tmp/snapshot.evt", 100);
+    fileName = decoder->SetDataSink(fileName, "file:///tmp/snapshot.evt", 100);    
     
-    fileName_open = fileName;
+    fileName_open = "ringbuffer";
   }
   std::cout << "Snapshot of 100 ring items from " << fileName << " ready to be analyzed!" << std::endl;
-  
 }
 
 void
@@ -684,7 +697,9 @@ GETmePlots::Draw()
   // Reset all histograms
   for (Int_t j=0; j<NAGET; j++){
     for (Int_t i=0; i<NCHN; i++){
-	h[ASADtab][j][i]->Reset("ICESM");
+      h[ASADtab][j][i]->Reset("ICESM");
+      for (Int_t k=0; k<fTbs; k++)
+	h[ASADtab][j][i]->Fill(k,-1);
     }
   }
   
@@ -711,9 +726,12 @@ GETmePlots::Draw()
     for(auto&& hh: hit.s_rawADC){
       int tb = hh.first;
       int adc = hh.second;
-      if (tb < fTbs) {
-	if (fDebug)
+      if (tb <= fTbs) {
+	if (fDebug){
+	  std::cout << fTbs << std::endl;
 	  std::cout << "\t\t\t" << chnID << " " << tb << " " << adc << std::endl;
+	}
+	h[asadID][agetID][chnID]->SetBins(fTbs, 0, fTbs);
 	h[asadID][agetID][chnID]->Fill(tb, adc);
       }
     }
@@ -750,23 +768,36 @@ void
 FillTheTab::zoomHistograms()
 {
   QWidget* w = new QWidget;
-  
   w->show();
-  // QMainCanvas constructor.
-  QVBoxLayout *l = new QVBoxLayout(w);
-  // the QRootCanvas indices don't mean anything in this case
-  l->addWidget(ctmp = new QGCanvas(fASAD, fAGET, w));
+  QVBoxLayout *l = new QVBoxLayout();
 
-  ctmp->getCanvas(fASAD,fAGET)->cd();
-  htmp = (TH1D*)h[fASAD][fAGET][fCHN]->Clone();
-  htmp->SetTitle(Form("AsAd %d Aget %d Channel %d Event %d", fASAD, fAGET, fCHN, 0));
-  htmp->SetBins(fTbs, 0, fTbs);
-  htmp->SetMinimum(0);
-  htmp->SetMaximum(fADC);
-  htmp->Draw("histo");
-  ctmp->getCanvas(fASAD,fAGET)->Modified();
-  ctmp->getCanvas(fASAD,fAGET)->Update();
+  //  QPushButton *closeButton, *b;
+
+  //  closeButton = new QPushButton(tr("Close"));
+  l->addWidget(ctmp = new QRootCanvas(w));  
+  //  l->addWidget(b = new QPushButton("Draw Histogram", w));
+  //  l->addWidget(closeButton);
+
+  //  connect(closeButton, SIGNAL(clicked()), w, SLOT(close()));
+  //  connect(b, SIGNAL(clicked()), this, SLOT(clicked1()));
+
+  clicked1();
+  
+  fRootTimer = new QTimer(w);
+  QObject::connect( fRootTimer, SIGNAL(timeout()), this, SLOT(handle_root_events()) );
+  fRootTimer->start( 20 );
+  
+  w->setLayout(l);
+  w->setWindowTitle(tr("Popup window"));  
+
 }
+
+void FillTheTab::handle_root_events()
+{
+  //call the inner loop of ROOT
+  gSystem->ProcessEvents();
+}
+
 
 TString
 FillTheTab::GenerateName()
@@ -783,3 +814,129 @@ FillTheTab::updateCanvas()
   canvas[ASADtab][AGETtab]->getCanvas(ASADtab,AGETtab)->Modified();
   canvas[ASADtab][AGETtab]->getCanvas(ASADtab,AGETtab)->Update();  
 }
+
+QRootCanvas::QRootCanvas(QWidget *parent) : QWidget(parent, 0), ccanvas(0)
+{
+  // QRootCanvas constructor.
+
+  // set options needed to properly update the canvas when resizing the widget
+  // and to properly handle context menus and mouse move events
+  setAttribute(Qt::WA_OpaquePaintEvent, true);
+  setMinimumSize(200, 200);
+  setUpdatesEnabled(kFALSE);
+  setMouseTracking(kTRUE);
+
+  // register the QWidget in TVirtualX, giving its native window id
+  int wid = gVirtualX->AddWindow((ULong_t)winId(), 200, 200);
+  // create the ROOT TCanvas, giving as argument the QWidget registered id
+  ccanvas = new TCanvas("Root Canvas", width(), height(), wid);
+}
+
+//______________________________________________________________________________
+void QRootCanvas::resizeEvent( QResizeEvent * )
+{
+  // Handle resize events.
+
+  if (ccanvas) {
+    ccanvas->Resize();
+    ccanvas->Update();
+  }
+  this->update();
+  //  this->repaint();  
+}
+
+//______________________________________________________________________________
+void QRootCanvas::paintEvent( QPaintEvent * )
+{
+  // Handle paint events.
+
+  if (ccanvas) {
+    ccanvas->Resize();
+    ccanvas->Update();
+  }
+  this->update();
+  //  this->repaint();    
+}
+
+void QRootCanvas::mouseMoveEvent(QMouseEvent *e)
+{
+  // Handle mouse move events.
+
+  if (ccanvas) {
+    if (e->buttons() & Qt::LeftButton) {
+      ccanvas->HandleInput(kButton1Motion, e->x(), e->y());
+    } else if (e->buttons() & Qt::MidButton) {
+      ccanvas->HandleInput(kButton2Motion, e->x(), e->y());
+    } else if (e->buttons() & Qt::RightButton) {
+      ccanvas->HandleInput(kButton3Motion, e->x(), e->y());
+    } else {
+      ccanvas->HandleInput(kMouseMotion, e->x(), e->y());
+    }
+  }
+}
+
+void QRootCanvas::mousePressEvent( QMouseEvent *e )
+{
+  // Handle mouse button press events.
+
+  if (ccanvas) {
+    switch (e->button()) {
+    case Qt::LeftButton :
+      ccanvas->HandleInput(kButton1Down, e->x(), e->y());
+      break;
+    case Qt::MidButton :
+      ccanvas->HandleInput(kButton2Down, e->x(), e->y());
+      break;
+    case Qt::RightButton :
+      // does not work properly on Linux...
+      // ...adding setAttribute(Qt::WA_PaintOnScreen, true)
+      // seems to cure the problem
+      ccanvas->HandleInput(kButton3Down, e->x(), e->y());
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+void QRootCanvas::mouseReleaseEvent( QMouseEvent *e )
+{
+  // Handle mouse button release events.
+
+  if (ccanvas) {
+    switch (e->button()) {
+    case Qt::LeftButton :
+      ccanvas->HandleInput(kButton1Up, e->x(), e->y());
+      break;
+    case Qt::MidButton :
+      ccanvas->HandleInput(kButton2Up, e->x(), e->y());
+      break;
+    case Qt::RightButton :
+      // does not work properly on Linux...
+      // ...adding setAttribute(Qt::WA_PaintOnScreen, true)
+      // seems to cure the problem
+      ccanvas->HandleInput(kButton3Up, e->x(), e->y());
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+void FillTheTab::clicked1()
+{
+  ctmp->getCanvas()->Clear();
+  ctmp->getCanvas()->cd();
+  ctmp->getCanvas()->SetBorderMode(0);
+  ctmp->getCanvas()->SetFillColor(0);
+  ctmp->getCanvas()->SetGrid();
+  htmp = (TH1D*)h[fASAD][fAGET][fCHN]->Clone();
+  htmp->SetTitle(Form("AsAd %d Aget %d Channel %d Event %d", fASAD, fAGET, fCHN, numEv));
+  htmp->SetBins(fTbs, 0, fTbs);
+  htmp->SetMinimum(0);
+  htmp->SetMaximum(fADC);
+  htmp->Draw("histo");
+  ctmp->getCanvas()->Modified();
+  ctmp->getCanvas()->Update();  
+}
+

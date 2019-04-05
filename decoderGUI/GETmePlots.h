@@ -26,6 +26,7 @@ class TCanvas;
 class QTimer;
 class QStatusBar;
 class QGCanvas;
+class QRootCanvas;
 
 const Int_t              NCOBO=2;
 const Int_t              NASAD=2;
@@ -46,17 +47,42 @@ extern TString           h_name[NASAD][NAGET][NCHN];
 extern TH1D              *h[NASAD][NAGET][NCHN];
 extern QGCanvas          *canvas[NASAD][NAGET];      
 extern TCanvas           *fCanvas[NASAD][NAGET];
+extern QRootCanvas       *ctmp;
+extern TCanvas           *canvastmp;
+extern QPushButton *zoom;
+
+class QRootCanvas : public QWidget
+{
+     Q_OBJECT
+
+ public:
+     QRootCanvas( QWidget *parent = 0);
+     virtual ~QRootCanvas() {}
+     TCanvas* getCanvas() { return ccanvas;}
+
+ protected:
+
+     TCanvas           *ccanvas;
+     virtual void    mouseMoveEvent( QMouseEvent *e );
+     virtual void    mousePressEvent( QMouseEvent *e );
+     virtual void    mouseReleaseEvent( QMouseEvent *e );
+     virtual void    paintEvent( QPaintEvent *e );
+     virtual void    resizeEvent( QResizeEvent *e );
+};
+
 
 class QGCanvas : public QWidget
 {
   Q_OBJECT
      
  public:
-     QGCanvas(int asad, int aget, QWidget *parent = 0);
-     virtual ~QGCanvas() {}
+  QGCanvas(int asad, int aget, QWidget *parent = 0);
+  virtual ~QGCanvas() {}
+  QGCanvas& operator = (const QGCanvas &t);
+  
+  TCanvas* getCanvas(int asad, int aget) { return fCanvas[asad][aget]; }
+  TCanvas* getCanvas() { return canvastmp; }  
 
-     TCanvas* getCanvas(int asad, int aget) { return fCanvas[asad][aget]; }     
-     
  protected:
      virtual void    paintEvent( QPaintEvent *e );
      virtual void    resizeEvent( QResizeEvent *e );
@@ -73,12 +99,16 @@ class FillTheTab : public QWidget
    void Reset();
    void Update();   
    void Zoom();
+   void handle_root_events();
+   void clicked1();
    
+ protected:
+   QTimer         *fRootTimer;
+     
  private:
 
    QGCanvas    *canvas[NASAD][NAGET];      
 
-   QGCanvas* ctmp;   
    TH1D *htmp;
    TString hname;
 
@@ -109,7 +139,7 @@ class GETmePlots : public QWidget
     void ASADindexChanged();
     void AGETindexChanged();        
     void CHNindexChanged();
-    void TBindexChanged();
+    void TBvalueChanged(const QString & text);
     void ADCvalueChanged(const QString & text);                
     void TabSelected();
     void OnlineSelected(const QString & text);    
@@ -148,16 +178,14 @@ class GETmePlots : public QWidget
     QLabel *fADCLabel;      
     QLabel* fOnlineLabel;
     
-    QPushButton *zoom;
-    
     QAction *openAct;
     QAction *onlineAct;
     QAction *exitAct;
     
-    QComboBox* fCOBObox, *fASADbox, *fAGETbox, *fCHNbox, *fTBbox;
+    QComboBox* fCOBObox, *fASADbox, *fAGETbox, *fCHNbox;
     
     QLineEdit* fOnlinePath;
-    QLineEdit* fADCvalue;
+    QLineEdit* fADCvalue, *fTBbox;
     
     QCheckBox* fOnlineCheck;   
 
