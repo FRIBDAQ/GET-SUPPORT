@@ -81,14 +81,15 @@ GETmePlots::GETmePlots()
   setMinimumSize(1200, 400);
   setWindowTitle(tr("GETmePlots"));
 
+  // Allows to use Enter as update button
   installEventFilter(this);
-  gInterpreter->Declare("#include \"/scratch/cerizza/GET.master/decoderGUI/ZoomClass.h\"");
+  // Creates the zoom canvas and keep it up to date
+  gInterpreter->Declare("#include \"../include/ZoomClass.h\"");  
 
 }
 
 GETmePlots::~GETmePlots()
-{
-}
+{}
 
 void
 GETmePlots::createActions()
@@ -403,7 +404,8 @@ GETmePlots::createTopGroupBox()
   QGridLayout *lo = new QGridLayout;
   fOnlineLabel = new QLabel(tr("tcp://")); 
   fOnlinePath = new QLineEdit;
-  fOnlinePath->setText(tr("spdaq08/GET"));
+  if (fDebug)
+    fOnlinePath->setText(tr("spdaq08/GET"));
   lo->addWidget(fOnlineLabel, 0, 0);
   lo->addWidget(fOnlinePath, 0, 1);  
   fOnlineCheck = new QCheckBox(tr("&Enable/Disable Online"));
@@ -497,7 +499,7 @@ QGCanvas::QGCanvas(int asad, int aget, QWidget *parent)
   // QRootCanvas constructor.
 
   // set options needed to properly update the canvas when resizing the widget
-  // and to properly handle context menus and momoyuse move events
+  // and to properly handle context menus and mouse move events
   setMinimumSize(300, 200);
   setUpdatesEnabled(kFALSE);
   setMouseTracking(kTRUE);
@@ -509,7 +511,8 @@ QGCanvas::QGCanvas(int asad, int aget, QWidget *parent)
   fCanvas[asad][aget] = new TCanvas(Form("canvas_%d_%d", asad, aget), width(), height(), wid[asad][aget]);   
 }
 
-void QGCanvas::resizeEvent( QResizeEvent * )
+void
+QGCanvas::resizeEvent( QResizeEvent * )
 {
   // Handle resize events
   if (fCanvas[ASADtab][AGETtab]) {
@@ -518,7 +521,8 @@ void QGCanvas::resizeEvent( QResizeEvent * )
   }
 }
 
-void QGCanvas::paintEvent( QPaintEvent * )
+void
+QGCanvas::paintEvent( QPaintEvent * )
 {
   // Handle paint events.
   if (fCanvas[ASADtab][AGETtab]) {
@@ -527,7 +531,8 @@ void QGCanvas::paintEvent( QPaintEvent * )
   }
 }
 
-void QGCanvas::mouseMoveEvent(QMouseEvent *e)
+void
+QGCanvas::mouseMoveEvent(QMouseEvent *e)
 {
   // Handle mouse move events.
 
@@ -545,7 +550,8 @@ void QGCanvas::mouseMoveEvent(QMouseEvent *e)
   }
 }
 
-void QGCanvas::mousePressEvent(QMouseEvent *e)
+void
+QGCanvas::mousePressEvent(QMouseEvent *e)
 {
   // Handle mouse button press events.
 
@@ -569,7 +575,8 @@ void QGCanvas::mousePressEvent(QMouseEvent *e)
   }
 }
 
-void QGCanvas::mouseReleaseEvent(QMouseEvent *e)
+void
+QGCanvas::mouseReleaseEvent(QMouseEvent *e)
 {
   // Handle mouse button release events.
 
@@ -644,7 +651,6 @@ void
 FillTheTab::Zoom()
 {
   zoomHistograms();
-  //  updateCanvas();
 }
 
 void
@@ -653,14 +659,6 @@ GETmePlots::Snapshot()
   fSnapshot = true;
   numEv = 0;
 
-  /*
-  QString msg = fOnlinePath->text();
-  fileName = msg.toUtf8().constData();
-  fileName = "tcp://"+fileName;
-  */
-
-  std::cout << fileName << std::endl;
-  
   if (fileName == ""){
     std::cout << "\t\t\t\t >>> Please open a file...(File->Open file) or attach an online ring buffer. Try again! <<<" << std::endl;
     return;
@@ -804,24 +802,15 @@ FillTheTab::zoomHistograms()
   w->show();
   QVBoxLayout *l = new QVBoxLayout();
 
-  //  QPushButton *closeButton, *b;
-
-  //  closeButton = new QPushButton(tr("Close"));
   l->addWidget(ctmp = new QRootCanvas(w));  
-  //  l->addWidget(b = new QPushButton("Draw Histogram", w));
-  //  l->addWidget(closeButton);
 
-  //  connect(closeButton, SIGNAL(clicked()), w, SLOT(close()));
-  //  connect(b, SIGNAL(clicked()), this, SLOT(clicked1()));
-
-  clicked1();
+  ClickForZoom();
 
   // Generate random name
   std::string wName = std::to_string(fASAD)+"_"+std::to_string(fAGET)+"_"+std::to_string(fCHN);
   
   w->setObjectName(QString::fromStdString(wName));
   QString objName = w->objectName();
-  //  std::cout << objName.toUtf8().constData() << std::endl;
   
   fRootTimer = new QTimer(w);
   QObject::connect( fRootTimer, SIGNAL(timeout()), this, SLOT(handle_root_events()) );
@@ -833,7 +822,8 @@ FillTheTab::zoomHistograms()
 
 }
 
-void FillTheTab::handle_root_events()
+void
+FillTheTab::handle_root_events()
 {
   //call the inner loop of ROOT
   gSystem->ProcessEvents();
@@ -876,8 +866,8 @@ QRootCanvas::QRootCanvas(QWidget *parent) : QWidget(parent, 0), ccanvas(0)
   ccanvas = new TCanvas("Root Canvas", width(), height(), wid);
 }
 
-//______________________________________________________________________________
-void QRootCanvas::resizeEvent( QResizeEvent * )
+void
+QRootCanvas::resizeEvent( QResizeEvent * )
 {
   // Handle resize events.
 
@@ -887,8 +877,8 @@ void QRootCanvas::resizeEvent( QResizeEvent * )
   }
 }
 
-//______________________________________________________________________________
-void QRootCanvas::paintEvent( QPaintEvent * )
+void
+QRootCanvas::paintEvent( QPaintEvent * )
 {
   // Handle paint events.
 
@@ -898,7 +888,8 @@ void QRootCanvas::paintEvent( QPaintEvent * )
   }
 }
 
-void QRootCanvas::mouseMoveEvent(QMouseEvent *e)
+void
+QRootCanvas::mouseMoveEvent(QMouseEvent *e)
 {
   // Handle mouse move events.
 
@@ -915,7 +906,8 @@ void QRootCanvas::mouseMoveEvent(QMouseEvent *e)
   }
 }
 
-void QRootCanvas::mousePressEvent( QMouseEvent *e )
+void
+QRootCanvas::mousePressEvent( QMouseEvent *e )
 {
   // Handle mouse button press events.
 
@@ -939,7 +931,8 @@ void QRootCanvas::mousePressEvent( QMouseEvent *e )
   }
 }
 
-void QRootCanvas::mouseReleaseEvent( QMouseEvent *e )
+void
+QRootCanvas::mouseReleaseEvent( QMouseEvent *e )
 {
   // Handle mouse button release events.
 
@@ -963,7 +956,8 @@ void QRootCanvas::mouseReleaseEvent( QMouseEvent *e )
   }
 }
 
-void FillTheTab::clicked1()
+void
+FillTheTab::ClickForZoom()
 {
   ctmp->getCanvas()->Clear();
   ctmp->getCanvas()->cd();
@@ -976,24 +970,13 @@ void FillTheTab::clicked1()
   htmp->SetMinimum(0);
   htmp->SetMaximum(fADC);
   htmp->Draw("histo");
-  /*
-  TH2F *hpxpy  = new TH2F("hpxpy","py vs px",40,-4,4,40,-4,4);
-  hpxpy->SetStats(0);
-  Double_t px,py;
-  for (Int_t i = 0; i < 50000; i++) {
-    gRandom->Rannor(px,py);
-    hpxpy->Fill(px,py);
-  }
-  hpxpy->Draw("col");
-  */
   ctmp->getCanvas()->Modified();
   ctmp->getCanvas()->Update();  
 
-  //  ctmp->getCanvas()->cd();
-  //  gPad->AddExec("dynamic","MyClass::MouseEvent()");
 }
 
-bool GETmePlots::eventFilter(QObject* obj, QEvent* event)
+bool
+GETmePlots::eventFilter(QObject* obj, QEvent* event)
 {
   if (event->type()==QEvent::KeyPress) {
     QKeyEvent* key = static_cast<QKeyEvent*>(event);
@@ -1010,7 +993,8 @@ bool GETmePlots::eventFilter(QObject* obj, QEvent* event)
   return false;
 }
 
-void GETmePlots::closeEvent(QCloseEvent *event)
+void
+GETmePlots::closeEvent(QCloseEvent *event)
 {
   foreach (QWidget * widget, QApplication::topLevelWidgets())  {
     if (widget == this)

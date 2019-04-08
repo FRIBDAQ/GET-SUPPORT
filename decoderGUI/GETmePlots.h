@@ -101,7 +101,6 @@ class FillTheTab : public QWidget
    void Update();   
    void Zoom();
    void handle_root_events();
-   void clicked1();
    
  protected:
    QTimer         *fRootTimer;
@@ -121,6 +120,8 @@ class FillTheTab : public QWidget
    TString GenerateName();
    void DrawHistograms(int asad, int aget);
    void UpdateHistograms(int asad, int aget);   
+   void ClickForZoom();
+
 };
 
 class GETmePlots : public QWidget

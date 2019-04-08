@@ -271,13 +271,13 @@ qmake_all: FORCE
 
 dist: 
 	@test -d .tmp/GETmePlots1.0.0 || mkdir -p .tmp/GETmePlots1.0.0
-	$(COPY_FILE) --parents $(DIST) .tmp/GETmePlots1.0.0/ && $(COPY_FILE) --parents GETmePlots.h AnalyzeFrame.h GETDecoder.h processor.h .tmp/GETmePlots1.0.0/ && $(COPY_FILE) --parents GETmePlots.cpp main.cpp AnalyzeFrame.cpp GETDecoder.cpp processor.cpp .tmp/GETmePlots1.0.0/ && (cd `dirname .tmp/GETmePlots1.0.0` && $(TAR) GETmePlots1.0.0.tar GETmePlots1.0.0 && $(COMPRESS) GETmePlots1.0.0.tar) && $(MOVE) `dirname .tmp/GETmePlots1.0.0`/GETmePlots1.0.0.tar.gz . && $(DEL_FILE) -r .tmp/GETmePlots1.0.0
+	$(COPY_FILE) --parents $(DIST) .tmp/GETmePlots1.0.0/ && $(COPY_FILE) --parents GETmePlots.h AnalyzeFrame.h GETDecoder.h processor.h ZoomClass.h .tmp/GETmePlots1.0.0/ && $(COPY_FILE) --parents GETmePlots.cpp main.cpp AnalyzeFrame.cpp GETDecoder.cpp processor.cpp .tmp/GETmePlots1.0.0/ && (cd `dirname .tmp/GETmePlots1.0.0` && $(TAR) GETmePlots1.0.0.tar GETmePlots1.0.0 && $(COMPRESS) GETmePlots1.0.0.tar) && $(MOVE) `dirname .tmp/GETmePlots1.0.0`/GETmePlots1.0.0.tar.gz . && $(DEL_FILE) -r .tmp/GETmePlots1.0.0
 
 
 clean:compiler_clean 
 	-$(DEL_FILE) $(OBJECTS)
 	-$(DEL_FILE) *~ core *.core
-	rm -f GETmePlots
+
 
 distclean: clean 
 	-$(DEL_FILE) $(TARGET) 
@@ -357,7 +357,7 @@ moc_GETmePlots.cpp: GETDecoder.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVectorDfwd.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TFitResultPtr.h \
 		GETmePlots.h
-	/usr/lib/x86_64-linux-gnu/qt5/bin/moc $(DEFINES) -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I/scratch/cerizza/GET-SUPPORT/decoderGUIv3 -I'/scratch/cerizza/GET-SUPPORT/decoderGUIv3/$(ROOTSYS)/include' -I'/scratch/cerizza/GET-SUPPORT/decoderGUIv3/$(DAQROOT)/include' -I/usr/opt/GET/include -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/4.9 -I/usr/include/x86_64-linux-gnu/c++/4.9 -I/usr/include/c++/4.9/backward -I/usr/lib/gcc/x86_64-linux-gnu/4.9/include -I/usr/local/include -I/usr/lib/gcc/x86_64-linux-gnu/4.9/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include GETmePlots.h -o moc_GETmePlots.cpp
+	/usr/lib/x86_64-linux-gnu/qt5/bin/moc $(DEFINES) -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I/scratch/cerizza/GET.master/decoderGUI -I'/scratch/cerizza/GET.master/decoderGUI/$(ROOTSYS)/include' -I'/scratch/cerizza/GET.master/decoderGUI/$(DAQROOT)/include' -I/usr/opt/GET/include -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/4.9 -I/usr/include/x86_64-linux-gnu/c++/4.9 -I/usr/include/c++/4.9/backward -I/usr/lib/gcc/x86_64-linux-gnu/4.9/include -I/usr/local/include -I/usr/lib/gcc/x86_64-linux-gnu/4.9/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include GETmePlots.h -o moc_GETmePlots.cpp
 
 compiler_moc_source_make_all:
 compiler_moc_source_clean:
@@ -373,10 +373,11 @@ compiler_clean: compiler_moc_header_clean
 
 ####### Compile
 
-GETmePlots.o: GETmePlots.cpp $(ROOTSYS)/include/TCanvas.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TPad.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVirtualPad.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TAttPad.h \
+GETmePlots.o: GETmePlots.cpp $(ROOTSYS)/include/TROOT.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TDirectory.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TBuffer.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TObject.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/RConfigure.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/Rtypes.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/RtypesCore.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/RConfig.h \
@@ -388,17 +389,27 @@ GETmePlots.o: GETmePlots.cpp $(ROOTSYS)/include/TCanvas.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TSchemaHelper.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TIsAProxy.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVirtualIsAProxy.h \
-		$(ROOTSYS)/include/TVirtualX.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TNamed.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TObject.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/RConfigure.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TStorage.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVersionCheck.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TNamed.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TString.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TMathBase.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/RStringView.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/RWrap_libcpp_string_view.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/libcpp_string_view.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TList.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TSeqCollection.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TCollection.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TIterator.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TDatime.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TUUID.h \
+		$(ROOTSYS)/include/TRandom.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/Math/TRandomEngine.h \
+		$(ROOTSYS)/include/TCanvas.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TPad.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVirtualPad.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TAttPad.h \
+		$(ROOTSYS)/include/TVirtualX.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TAttLine.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TAttFill.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TAttText.h \
@@ -407,10 +418,6 @@ GETmePlots.o: GETmePlots.cpp $(ROOTSYS)/include/TCanvas.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/Buttons.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TQObject.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TError.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TList.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TSeqCollection.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TCollection.h \
-		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TIterator.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVirtualQConnection.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TInterpreter.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TDictionary.h \
@@ -448,6 +455,9 @@ GETmePlots.o: GETmePlots.cpp $(ROOTSYS)/include/TCanvas.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVectorFfwd.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TVectorDfwd.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TFitResultPtr.h \
+		$(ROOTSYS)/include/TH2.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TMatrixFBasefwd.h \
+		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TMatrixDBasefwd.h \
 		$(ROOTSYS)/include/TFrame.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TWbox.h \
 		/mnt/misc/sw/x86_64/Debian/8/root/gnu/6.10.02/include/TBox.h \
@@ -649,6 +659,7 @@ install:
 	install -d $(PREFIX)/include
 	install AnalyzeFrame.h $(PREFIX)/include
 	install GETDecoder.h $(PREFIX)/include
+	install ZoomClass.h $(PREFIX)/include
 
 uninstall:   FORCE
 
