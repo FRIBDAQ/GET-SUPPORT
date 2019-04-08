@@ -53,21 +53,22 @@ extern QPushButton *zoom;
 
 class QRootCanvas : public QWidget
 {
-     Q_OBJECT
-
+  Q_OBJECT
+  
  public:
-     QRootCanvas( QWidget *parent = 0);
-     virtual ~QRootCanvas() {}
-     TCanvas* getCanvas() { return ccanvas;}
-
+  QRootCanvas( QWidget *parent = 0);
+  virtual ~QRootCanvas() {}
+  TCanvas* getCanvas() { return ccanvas;}
+  
  protected:
+  
+  TCanvas           *ccanvas;
+  virtual void    mouseMoveEvent( QMouseEvent *e );
+  virtual void    mousePressEvent( QMouseEvent *e );
+  virtual void    mouseReleaseEvent( QMouseEvent *e );
+  virtual void    paintEvent( QPaintEvent *e );
+  virtual void    resizeEvent( QResizeEvent *e );
 
-     TCanvas           *ccanvas;
-     virtual void    mouseMoveEvent( QMouseEvent *e );
-     virtual void    mousePressEvent( QMouseEvent *e );
-     virtual void    mouseReleaseEvent( QMouseEvent *e );
-     virtual void    paintEvent( QPaintEvent *e );
-     virtual void    resizeEvent( QResizeEvent *e );
 };
 
 
@@ -120,7 +121,6 @@ class FillTheTab : public QWidget
    TString GenerateName();
    void DrawHistograms(int asad, int aget);
    void UpdateHistograms(int asad, int aget);   
-   
 };
 
 class GETmePlots : public QWidget
@@ -129,7 +129,7 @@ class GETmePlots : public QWidget
   
  public:
   GETmePlots();
-  ~GETmePlots() {}
+  ~GETmePlots();
 
  private slots:
     void openFile();
@@ -138,7 +138,7 @@ class GETmePlots : public QWidget
     void COBOindexChanged();
     void ASADindexChanged();
     void AGETindexChanged();        
-    void CHNindexChanged();
+    void CHNvalueChanged(const QString & text);
     void TBvalueChanged(const QString & text);
     void ADCvalueChanged(const QString & text);                
     void TabSelected();
@@ -146,9 +146,12 @@ class GETmePlots : public QWidget
     void Snapshot();
     void Next();
     void Draw();
-    
+    void Toggled();
 
  private:
+    bool eventFilter(QObject* obj, QEvent* event);
+    void closeEvent(QCloseEvent *event);
+    
     void createActions();      
     void createMenu();
     void createTopGroupBox();
@@ -173,8 +176,9 @@ class GETmePlots : public QWidget
     QGroupBox *bottomGroupBox;   
     QGroupBox* gridBox;
     QGroupBox* gridBox2;
-    
-    QLabel *fTbsLabel;
+
+    QLabel *fChnLabel;    
+    QLabel *fTbsLabel;    
     QLabel *fADCLabel;      
     QLabel* fOnlineLabel;
     
@@ -182,10 +186,10 @@ class GETmePlots : public QWidget
     QAction *onlineAct;
     QAction *exitAct;
     
-    QComboBox* fCOBObox, *fASADbox, *fAGETbox, *fCHNbox;
+    QComboBox* fCOBObox, *fASADbox, *fAGETbox; 
     
     QLineEdit* fOnlinePath;
-    QLineEdit* fADCvalue, *fTBbox;
+    QLineEdit* fADCvalue, *fTBbox, *fCHNbox;
     
     QCheckBox* fOnlineCheck;   
 

@@ -2,12 +2,15 @@
 
 #include <iostream>
 
+#include "TROOT.h"
+#include "TRandom.h"
 #include <TCanvas.h>
 #include <TVirtualX.h>
 #include <TSystem.h>
 #include <TFormula.h>
 #include <TF1.h>
 #include <TH1.h>
+#include <TH2.h>
 #include <TFrame.h>
 #include <TTimer.h>
 
@@ -36,6 +39,7 @@ TCanvas  *fCanvas[NASAD][NAGET];
 QRootCanvas *ctmp;
 TCanvas  *canvastmp;
 QPushButton *zoom;
+QWidget* w;
 
 Int_t           coboID = 0;
 Int_t           asadID = 0;
@@ -72,8 +76,18 @@ GETmePlots::GETmePlots()
   createConnections();
   DisableAll();
 
+  setWindowFlags(Qt::WindowStaysOnTopHint);
+  setObjectName("main");
   setMinimumSize(1200, 400);
   setWindowTitle(tr("GETmePlots"));
+
+  installEventFilter(this);
+  gInterpreter->Declare("#include \"/scratch/cerizza/GET.master/decoderGUI/ZoomClass.h\"");
+
+}
+
+GETmePlots::~GETmePlots()
+{
 }
 
 void
@@ -140,7 +154,7 @@ GETmePlots::createConnections()
   // AGET box
   connect(fAGETbox, SIGNAL(currentIndexChanged(int)), this, SLOT(AGETindexChanged()));   
   // CHN box
-  connect(fCHNbox, SIGNAL(currentIndexChanged(int)), this, SLOT(CHNindexChanged()));
+  connect(fCHNbox, SIGNAL(textChanged(const QString &)), this, SLOT(CHNvalueChanged(const QString &)));
   // TB box
   connect(fTBbox, SIGNAL(textChanged(const QString &)), this, SLOT(TBvalueChanged(const QString &)));     
   // Max ADC
@@ -152,6 +166,7 @@ GETmePlots::createConnections()
   // Online option identifier
   connect(fOnlineCheck, SIGNAL(toggled(bool)), fOnlinePath, SLOT(setEnabled(bool)));
   connect(fOnlineCheck, SIGNAL(toggled(bool)), buttons[0], SLOT(setEnabled(bool)));
+  connect(fOnlineCheck, SIGNAL(toggled(bool)), this, SLOT(Toggled()));  
   // Online ringbuffer
   connect(fOnlinePath, SIGNAL(textChanged(const QString &)), this, SLOT(OnlineSelected(const QString &)));  
 
@@ -201,6 +216,18 @@ GETmePlots::DisableTabs()
 }
 
 void
+GETmePlots::Toggled()
+{
+  if (fOnlineCheck->isChecked()){
+    QString msg = fOnlinePath->text();
+    fileName = msg.toUtf8().constData();
+    fileName = "tcp://"+fileName;
+    
+    std::cout << fileName << std::endl;
+  }
+}
+
+void
 GETmePlots::COBOindexChanged()
 {
   QString text = fCOBObox->currentText();
@@ -228,10 +255,9 @@ GETmePlots::AGETindexChanged()
 }
 
 void
-GETmePlots::CHNindexChanged()
+GETmePlots::CHNvalueChanged(const QString & text)
 {
-  QString text = fCHNbox->currentText();
-  fCHN = text.split(" ")[1].toInt();
+  fCHN = text.split(" ")[0].toInt();
   if (fDebug)
     std::cout << "You have selected channel " << fCHN << std::endl;  
 }
@@ -411,12 +437,13 @@ GETmePlots::createBottomGroupBox()
   lo->addWidget(fAGETbox, 1, 0);  
   
   // Channel selection
-  fCHNbox = new QComboBox(new QLabel(tr("Channel")));
-  for(int i = 0; i < 68; i++)
-    fCHNbox->addItem("Channel " + QString::number(i));
-  fCHNbox->setCurrentIndex(fCHN);
-  lo->addWidget(fCHNbox, 0, 1);  
-
+  fChnLabel = new QLabel(tr("Channel"));    
+  fCHNbox = new QLineEdit;
+  fCHNbox->setText(QString::number(fCHN));
+  fCHNbox->setMaximumWidth(40);
+  lo->addWidget(fChnLabel,0,1);
+  lo->addWidget(fCHNbox,0,2);
+  
   // Zoom button
   zoom = new QPushButton(tr("Zoom"));
   lo->addWidget(zoom, 1, 1);
@@ -489,8 +516,6 @@ void QGCanvas::resizeEvent( QResizeEvent * )
     fCanvas[ASADtab][AGETtab]->Resize();
     fCanvas[ASADtab][AGETtab]->Update();
   }
-  this->update();
-  //  this->repaint();  
 }
 
 void QGCanvas::paintEvent( QPaintEvent * )
@@ -500,8 +525,6 @@ void QGCanvas::paintEvent( QPaintEvent * )
     fCanvas[ASADtab][AGETtab]->Resize();
     fCanvas[ASADtab][AGETtab]->Update();
   }
-  this->update();
-  //  this->repaint();  
 }
 
 void QGCanvas::mouseMoveEvent(QMouseEvent *e)
@@ -581,8 +604,16 @@ FillTheTab::Reset()
 void
 FillTheTab::Update()
 {
-  if (fDebug)
+  if (fDebug){
     std::cout << "Update clicked" << std::endl;
+    std::cout << "COBO:   " << fCOBO << std::endl;
+    std::cout << "ASAD:   " << fASAD << std::endl;
+    std::cout << "AGET:   " << fAGET << std::endl;
+    std::cout << "CHN:    " << fCHN  << std::endl;
+    std::cout << "TB:     " << fTbs  << std::endl;
+    std::cout << "maxADC: " << fADC  << std::endl;
+    std::cout << "Source: " << fileName << std::endl;
+  }  
 
   if (fDone == false){
     if (fDebug)
@@ -621,10 +652,12 @@ GETmePlots::Snapshot()
 {
   fSnapshot = true;
   numEv = 0;
-  
+
+  /*
   QString msg = fOnlinePath->text();
   fileName = msg.toUtf8().constData();
   fileName = "tcp://"+fileName;
+  */
 
   std::cout << fileName << std::endl;
   
@@ -767,7 +800,7 @@ FillTheTab::resetHistograms()
 void
 FillTheTab::zoomHistograms()
 {
-  QWidget* w = new QWidget;
+  w = new QWidget;
   w->show();
   QVBoxLayout *l = new QVBoxLayout();
 
@@ -782,13 +815,21 @@ FillTheTab::zoomHistograms()
   //  connect(b, SIGNAL(clicked()), this, SLOT(clicked1()));
 
   clicked1();
+
+  // Generate random name
+  std::string wName = std::to_string(fASAD)+"_"+std::to_string(fAGET)+"_"+std::to_string(fCHN);
+  
+  w->setObjectName(QString::fromStdString(wName));
+  QString objName = w->objectName();
+  //  std::cout << objName.toUtf8().constData() << std::endl;
   
   fRootTimer = new QTimer(w);
   QObject::connect( fRootTimer, SIGNAL(timeout()), this, SLOT(handle_root_events()) );
   fRootTimer->start( 20 );
   
   w->setLayout(l);
-  w->setWindowTitle(tr("Popup window"));  
+  std::string title = "ASAD " + std::to_string(fASAD) + " AGET " + std::to_string(fAGET) + " CHANNEL " + std::to_string(fCHN);
+  w->setWindowTitle(QString::fromStdString(title)); 
 
 }
 
@@ -813,6 +854,9 @@ FillTheTab::updateCanvas()
 {
   canvas[ASADtab][AGETtab]->getCanvas(ASADtab,AGETtab)->Modified();
   canvas[ASADtab][AGETtab]->getCanvas(ASADtab,AGETtab)->Update();  
+
+  canvas[ASADtab][AGETtab]->getCanvas(ASADtab,AGETtab)->cd();
+  gPad->AddExec("zoom",Form("ZoomClass::ZoomChannel(%d, %d)", fTbs, fADC));    
 }
 
 QRootCanvas::QRootCanvas(QWidget *parent) : QWidget(parent, 0), ccanvas(0)
@@ -841,8 +885,6 @@ void QRootCanvas::resizeEvent( QResizeEvent * )
     ccanvas->Resize();
     ccanvas->Update();
   }
-  this->update();
-  //  this->repaint();  
 }
 
 //______________________________________________________________________________
@@ -854,8 +896,6 @@ void QRootCanvas::paintEvent( QPaintEvent * )
     ccanvas->Resize();
     ccanvas->Update();
   }
-  this->update();
-  //  this->repaint();    
 }
 
 void QRootCanvas::mouseMoveEvent(QMouseEvent *e)
@@ -936,7 +976,46 @@ void FillTheTab::clicked1()
   htmp->SetMinimum(0);
   htmp->SetMaximum(fADC);
   htmp->Draw("histo");
+  /*
+  TH2F *hpxpy  = new TH2F("hpxpy","py vs px",40,-4,4,40,-4,4);
+  hpxpy->SetStats(0);
+  Double_t px,py;
+  for (Int_t i = 0; i < 50000; i++) {
+    gRandom->Rannor(px,py);
+    hpxpy->Fill(px,py);
+  }
+  hpxpy->Draw("col");
+  */
   ctmp->getCanvas()->Modified();
   ctmp->getCanvas()->Update();  
+
+  //  ctmp->getCanvas()->cd();
+  //  gPad->AddExec("dynamic","MyClass::MouseEvent()");
 }
 
+bool GETmePlots::eventFilter(QObject* obj, QEvent* event)
+{
+  if (event->type()==QEvent::KeyPress) {
+    QKeyEvent* key = static_cast<QKeyEvent*>(event);
+    if ( (key->key()==Qt::Key_Enter) || (key->key()==Qt::Key_Return) ) {
+      //Enter or return was pressed
+      tab[ASADtab][AGETtab]->Update();
+    } else {
+      return QObject::eventFilter(obj, event);
+    }
+    return true;
+  } else {
+    return QObject::eventFilter(obj, event);
+  }
+  return false;
+}
+
+void GETmePlots::closeEvent(QCloseEvent *event)
+{
+  foreach (QWidget * widget, QApplication::topLevelWidgets())  {
+    if (widget == this)
+      continue;
+    widget->close();
+  }
+  event->accept();
+}
