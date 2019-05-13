@@ -1,10 +1,10 @@
 GET=/usr/opt/GET
-NSCLDAQ=/usr/opt/nscldaq/11.3-004
+NSCLDAQ=$(DAQROOT)
 
 ICE_CPPFLAGS=-DICEUTIL_HEADER\(header\)="<IceUtil/header>" \
 	-DICE_EDITION=Ice -DICE_HEADER\(header\)="<Ice/header>"
 ICE_EDITION=Ice
-ICE_LIBS=-lIce -lIceUtil
+ICE_LIBS=-lIce $(shell pkg-config ice --libs)
 
 GETCPPFLAGS=-I$(GET)/include
 
@@ -15,7 +15,7 @@ LDFLAGS=-L$(GET)/lib \
 	-lgetbench-eccclient -lmdaq-utl -lmdaq-interfaces -lUtilities \
 	-lCompoundConfig   \
 	-pthread		\
-	-Wl,-rpath=$(GET)/lib $(ICE_LIBS) -g
+	-Wl,-rpath=$(GET)/lib $(ICE_LIBS) $(ICE_LIBS) -g
 
 all: daqstart daqstop
 

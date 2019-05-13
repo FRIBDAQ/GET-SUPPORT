@@ -1,4 +1,4 @@
-DAQROOT=/usr/opt/daq/11.3-003
+
 
 CXXFLAGS=-I$(DAQROOT)/include -g
 LDFLAGS=-L$(DAQROOT)/lib -ldaqio -ldataformat -lException -Wl,-rpath=$(DAQROOT)/lib

@@ -1,6 +1,6 @@
 GET=/usr/opt/GET
 COBOFORMATFILE=$(GET)/share/get-bench/format/CoboFormats.xcfg
-NSCLDAQ=/usr/opt/nscldaq/11.3-004
+NSCLDAQ=$(DAQROOT)
 
 
 
@@ -9,7 +9,7 @@ NSCLDAQ_LDFLAGS=-L$(NSCLDAQ)/lib -Wl,-rpath=$(NSCLDAQ)/lib -ldataformat -lDataFl
 
 ICE_CPPFLAGS = -DICEUTIL_HEADER\(header\)="<IceUtil/header>" -DICE_EDITION=Ice -DICE_HEADER\(header\)="<Ice/header>"
 ICE_EDITION = Ice
-ICE_LIBS = -lIce -lIceUtil
+ICE_LIBS = -lIce $(shell pkg-config ice --libs)
 
 CXXFLAGS=-I$(GET)/include $(ICE_CPPFLAGS) $(NSCLDAQ_CXXFLAGS) -std=c++11 \
 	-Wno-deprecated-declarations -g -DCOBO_FORMAT_FILE="\"$(COBOFORMATFILE)\""
