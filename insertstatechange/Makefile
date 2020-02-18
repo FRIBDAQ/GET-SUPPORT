@@ -1,6 +1,6 @@
 GET=/usr/opt/GET
 COBOFORMATFILE=$(GET)/share/get-bench/format/CoboFormats.xcfg
-NSCLDAQ=/usr/opt/nscldaq/11.3-004
+NSCLDAQ=$(DAQROOT)
 
 
 

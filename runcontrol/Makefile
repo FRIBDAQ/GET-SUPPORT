@@ -4,7 +4,7 @@ NSCLDAQ=/usr/opt/nscldaq/11.3-004
 ICE_CPPFLAGS=-DICEUTIL_HEADER\(header\)="<IceUtil/header>" \
 	-DICE_EDITION=Ice -DICE_HEADER\(header\)="<Ice/header>"
 ICE_EDITION=Ice
-ICE_LIBS=-lIce -lIceUtil
+ICE_LIBS=-lIce 
 
 GETCPPFLAGS=-I$(GET)/include
 
