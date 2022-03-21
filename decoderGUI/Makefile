@@ -35,7 +35,7 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = GETmePlots1.0.0
-DISTDIR = /scratch/fox/GET-SUPPORT/decoderGUI/.tmp/GETmePlots1.0.0
+DISTDIR = /fox/GET-SUPPORT/decoderGUI/.tmp/GETmePlots1.0.0
 LINK          = x86_64-linux-gnu-g++
 LFLAGS        = -Wl,-O1
 LIBS          = $(SUBLIBS) -L$(ROOTSYS)/lib -lCore -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lTree -lRint -lPostscript -lMatrix -lPhysics -lGui -lRGL -lMathCore -lThread -lMultiProc -pthread -L$(DAQLIB) -ldataformat -ldaqio -lException -Wl,-rpath=$(DAQLIB) -L/usr/opt/GET/lib -Wl,-rpath=/usr/opt/GET/lib -lMultiFrame -g -lQt5Widgets -lQt5Gui -lQt5Core -lpthread -lGL 
@@ -117,6 +117,7 @@ DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/qt_config.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/exclusive_builds.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/toolchain.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/default_pre.prf \
@@ -211,6 +212,7 @@ Makefile: GETmePlots.pro /usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++/qmake.c
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/qt_config.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/exclusive_builds.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/toolchain.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/default_pre.prf \
@@ -290,6 +292,7 @@ Makefile: GETmePlots.pro /usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++/qmake.c
 /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/qt_config.prf:
 /usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf:
 /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_post.prf:
+.qmake.stash:
 /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/exclusive_builds.prf:
 /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/toolchain.prf:
 /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/default_pre.prf:
@@ -384,48 +387,10 @@ moc_GETmePlots.cpp: GETDecoder.h \
 		$(DAQROOT)/include/CGlomParameters.h \
 		processor.h \
 		AnalyzeFrame.h \
-		/usr/opt/root/root-6.10.02/include/TString.h \
-		/usr/opt/root/root-6.10.02/include/TMathBase.h \
-		/usr/opt/root/root-6.10.02/include/Rtypes.h \
-		/usr/opt/root/root-6.10.02/include/RtypesCore.h \
-		/usr/opt/root/root-6.10.02/include/RConfig.h \
-		/usr/opt/root/root-6.10.02/include/RVersion.h \
-		/usr/opt/root/root-6.10.02/include/DllImport.h \
-		/usr/opt/root/root-6.10.02/include/snprintf.h \
-		/usr/opt/root/root-6.10.02/include/strlcpy.h \
-		/usr/opt/root/root-6.10.02/include/TGenericClassInfo.h \
-		/usr/opt/root/root-6.10.02/include/TSchemaHelper.h \
-		/usr/opt/root/root-6.10.02/include/TIsAProxy.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualIsAProxy.h \
-		/usr/opt/root/root-6.10.02/include/RStringView.h \
-		/usr/opt/root/root-6.10.02/include/RConfigure.h \
-		/usr/opt/root/root-6.10.02/include/RWrap_libcpp_string_view.h \
-		/usr/opt/root/root-6.10.02/include/libcpp_string_view.h \
-		$(ROOTSYS)/include/TH1D.h \
-		$(ROOTSYS)/include/TH1.h \
-		/usr/opt/root/root-6.10.02/include/TAxis.h \
-		/usr/opt/root/root-6.10.02/include/TNamed.h \
-		/usr/opt/root/root-6.10.02/include/TObject.h \
-		/usr/opt/root/root-6.10.02/include/TStorage.h \
-		/usr/opt/root/root-6.10.02/include/TVersionCheck.h \
-		/usr/opt/root/root-6.10.02/include/TAttAxis.h \
-		/usr/opt/root/root-6.10.02/include/TArrayD.h \
-		/usr/opt/root/root-6.10.02/include/TArray.h \
-		/usr/opt/root/root-6.10.02/include/TAttLine.h \
-		/usr/opt/root/root-6.10.02/include/TAttFill.h \
-		/usr/opt/root/root-6.10.02/include/TAttMarker.h \
-		/usr/opt/root/root-6.10.02/include/TArrayC.h \
-		/usr/opt/root/root-6.10.02/include/TArrayS.h \
-		/usr/opt/root/root-6.10.02/include/TArrayI.h \
-		/usr/opt/root/root-6.10.02/include/TArrayF.h \
-		/usr/opt/root/root-6.10.02/include/Foption.h \
-		/usr/opt/root/root-6.10.02/include/TVectorFfwd.h \
-		/usr/opt/root/root-6.10.02/include/TVectorDfwd.h \
-		/usr/opt/root/root-6.10.02/include/TFitResultPtr.h \
 		GETmePlots.h \
 		moc_predefs.h \
 		/usr/lib/qt5/bin/moc
-	/usr/lib/qt5/bin/moc $(DEFINES) --include /scratch/fox/GET-SUPPORT/decoderGUI/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/scratch/fox/GET-SUPPORT/decoderGUI -I'/scratch/fox/GET-SUPPORT/decoderGUI/$(ROOTSYS)/include' -I'/scratch/fox/GET-SUPPORT/decoderGUI/$(DAQROOT)/include' -I/usr/opt/GET/include -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/8 -I/usr/include/x86_64-linux-gnu/c++/8 -I/usr/include/c++/8/backward -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/local/include -I/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include GETmePlots.h -o moc_GETmePlots.cpp
+	/usr/lib/qt5/bin/moc $(DEFINES) --include /fox/GET-SUPPORT/decoderGUI/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/fox/GET-SUPPORT/decoderGUI -I'/fox/GET-SUPPORT/decoderGUI/$(ROOTSYS)/include' -I'/fox/GET-SUPPORT/decoderGUI/$(DAQROOT)/include' -I/usr/opt/GET/include -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/8 -I/usr/include/x86_64-linux-gnu/c++/8 -I/usr/include/c++/8/backward -I/usr/lib/gcc/x86_64-linux-gnu/8/include -I/usr/local/include -I/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include GETmePlots.h -o moc_GETmePlots.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
@@ -443,96 +408,7 @@ compiler_clean: compiler_moc_predefs_clean compiler_moc_header_clean
 
 ####### Compile
 
-GETmePlots.o: GETmePlots.cpp $(ROOTSYS)/include/TROOT.h \
-		/usr/opt/root/root-6.10.02/include/TDirectory.h \
-		/usr/opt/root/root-6.10.02/include/TBuffer.h \
-		/usr/opt/root/root-6.10.02/include/TObject.h \
-		/usr/opt/root/root-6.10.02/include/RConfigure.h \
-		/usr/opt/root/root-6.10.02/include/Rtypes.h \
-		/usr/opt/root/root-6.10.02/include/RtypesCore.h \
-		/usr/opt/root/root-6.10.02/include/RConfig.h \
-		/usr/opt/root/root-6.10.02/include/RVersion.h \
-		/usr/opt/root/root-6.10.02/include/DllImport.h \
-		/usr/opt/root/root-6.10.02/include/snprintf.h \
-		/usr/opt/root/root-6.10.02/include/strlcpy.h \
-		/usr/opt/root/root-6.10.02/include/TGenericClassInfo.h \
-		/usr/opt/root/root-6.10.02/include/TSchemaHelper.h \
-		/usr/opt/root/root-6.10.02/include/TIsAProxy.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualIsAProxy.h \
-		/usr/opt/root/root-6.10.02/include/TStorage.h \
-		/usr/opt/root/root-6.10.02/include/TVersionCheck.h \
-		/usr/opt/root/root-6.10.02/include/TNamed.h \
-		/usr/opt/root/root-6.10.02/include/TString.h \
-		/usr/opt/root/root-6.10.02/include/TMathBase.h \
-		/usr/opt/root/root-6.10.02/include/RStringView.h \
-		/usr/opt/root/root-6.10.02/include/RWrap_libcpp_string_view.h \
-		/usr/opt/root/root-6.10.02/include/libcpp_string_view.h \
-		/usr/opt/root/root-6.10.02/include/TList.h \
-		/usr/opt/root/root-6.10.02/include/TSeqCollection.h \
-		/usr/opt/root/root-6.10.02/include/TCollection.h \
-		/usr/opt/root/root-6.10.02/include/TIterator.h \
-		/usr/opt/root/root-6.10.02/include/TDatime.h \
-		/usr/opt/root/root-6.10.02/include/TUUID.h \
-		$(ROOTSYS)/include/TRandom.h \
-		/usr/opt/root/root-6.10.02/include/Math/TRandomEngine.h \
-		$(ROOTSYS)/include/TCanvas.h \
-		/usr/opt/root/root-6.10.02/include/TPad.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualPad.h \
-		/usr/opt/root/root-6.10.02/include/TAttPad.h \
-		$(ROOTSYS)/include/TVirtualX.h \
-		/usr/opt/root/root-6.10.02/include/TAttLine.h \
-		/usr/opt/root/root-6.10.02/include/TAttFill.h \
-		/usr/opt/root/root-6.10.02/include/TAttText.h \
-		/usr/opt/root/root-6.10.02/include/TAttMarker.h \
-		/usr/opt/root/root-6.10.02/include/GuiTypes.h \
-		/usr/opt/root/root-6.10.02/include/Buttons.h \
-		/usr/opt/root/root-6.10.02/include/TQObject.h \
-		/usr/opt/root/root-6.10.02/include/TError.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualQConnection.h \
-		/usr/opt/root/root-6.10.02/include/TInterpreter.h \
-		/usr/opt/root/root-6.10.02/include/TDictionary.h \
-		/usr/opt/root/root-6.10.02/include/ESTLType.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualMutex.h \
-		/usr/opt/root/root-6.10.02/include/TQClass.h \
-		/usr/opt/root/root-6.10.02/include/TClass.h \
-		/usr/opt/root/root-6.10.02/include/TObjArray.h \
-		/usr/opt/root/root-6.10.02/include/TObjString.h \
-		/usr/opt/root/root-6.10.02/include/ThreadLocalStorage.h \
-		/usr/opt/root/root-6.10.02/include/TAttBBox2D.h \
-		/usr/opt/root/root-6.10.02/include/TPoint.h \
-		/usr/opt/root/root-6.10.02/include/TAttCanvas.h \
-		/usr/opt/root/root-6.10.02/include/TCanvasImp.h \
-		$(ROOTSYS)/include/TSystem.h \
-		/usr/opt/root/root-6.10.02/include/TInetAddress.h \
-		$(ROOTSYS)/include/TTimer.h \
-		/usr/opt/root/root-6.10.02/include/TSysEvtHandler.h \
-		/usr/opt/root/root-6.10.02/include/TTime.h \
-		$(ROOTSYS)/include/TFormula.h \
-		/usr/opt/root/root-6.10.02/include/TBits.h \
-		/usr/opt/root/root-6.10.02/include/TMethodCall.h \
-		$(ROOTSYS)/include/TF1.h \
-		/usr/opt/root/root-6.10.02/include/Math/ParamFunctor.h \
-		$(ROOTSYS)/include/TH1.h \
-		/usr/opt/root/root-6.10.02/include/TAxis.h \
-		/usr/opt/root/root-6.10.02/include/TAttAxis.h \
-		/usr/opt/root/root-6.10.02/include/TArrayD.h \
-		/usr/opt/root/root-6.10.02/include/TArray.h \
-		/usr/opt/root/root-6.10.02/include/TArrayC.h \
-		/usr/opt/root/root-6.10.02/include/TArrayS.h \
-		/usr/opt/root/root-6.10.02/include/TArrayI.h \
-		/usr/opt/root/root-6.10.02/include/TArrayF.h \
-		/usr/opt/root/root-6.10.02/include/Foption.h \
-		/usr/opt/root/root-6.10.02/include/TVectorFfwd.h \
-		/usr/opt/root/root-6.10.02/include/TVectorDfwd.h \
-		/usr/opt/root/root-6.10.02/include/TFitResultPtr.h \
-		$(ROOTSYS)/include/TH2.h \
-		/usr/opt/root/root-6.10.02/include/TMatrixFBasefwd.h \
-		/usr/opt/root/root-6.10.02/include/TMatrixDBasefwd.h \
-		$(ROOTSYS)/include/TFrame.h \
-		/usr/opt/root/root-6.10.02/include/TWbox.h \
-		/usr/opt/root/root-6.10.02/include/TBox.h \
-		/usr/opt/root/root-6.10.02/include/TColor.h \
-		GETmePlots.h \
+GETmePlots.o: GETmePlots.cpp GETmePlots.h \
 		GETDecoder.h \
 		$(DAQROOT)/include/CDataSource.h \
 		$(DAQROOT)/include/CDataSourceFactory.h \
@@ -553,69 +429,10 @@ GETmePlots.o: GETmePlots.cpp $(ROOTSYS)/include/TROOT.h \
 		$(DAQROOT)/include/CDataFormatItem.h \
 		$(DAQROOT)/include/CGlomParameters.h \
 		processor.h \
-		AnalyzeFrame.h \
-		$(ROOTSYS)/include/TH1D.h
+		AnalyzeFrame.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o GETmePlots.o GETmePlots.cpp
 
-main.o: main.cpp $(ROOTSYS)/include/TApplication.h \
-		/usr/opt/root/root-6.10.02/include/TObject.h \
-		/usr/opt/root/root-6.10.02/include/RConfigure.h \
-		/usr/opt/root/root-6.10.02/include/Rtypes.h \
-		/usr/opt/root/root-6.10.02/include/RtypesCore.h \
-		/usr/opt/root/root-6.10.02/include/RConfig.h \
-		/usr/opt/root/root-6.10.02/include/RVersion.h \
-		/usr/opt/root/root-6.10.02/include/DllImport.h \
-		/usr/opt/root/root-6.10.02/include/snprintf.h \
-		/usr/opt/root/root-6.10.02/include/strlcpy.h \
-		/usr/opt/root/root-6.10.02/include/TGenericClassInfo.h \
-		/usr/opt/root/root-6.10.02/include/TSchemaHelper.h \
-		/usr/opt/root/root-6.10.02/include/TIsAProxy.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualIsAProxy.h \
-		/usr/opt/root/root-6.10.02/include/TStorage.h \
-		/usr/opt/root/root-6.10.02/include/TVersionCheck.h \
-		/usr/opt/root/root-6.10.02/include/TQObject.h \
-		/usr/opt/root/root-6.10.02/include/TError.h \
-		/usr/opt/root/root-6.10.02/include/TList.h \
-		/usr/opt/root/root-6.10.02/include/TSeqCollection.h \
-		/usr/opt/root/root-6.10.02/include/TCollection.h \
-		/usr/opt/root/root-6.10.02/include/TIterator.h \
-		/usr/opt/root/root-6.10.02/include/TString.h \
-		/usr/opt/root/root-6.10.02/include/TMathBase.h \
-		/usr/opt/root/root-6.10.02/include/RStringView.h \
-		/usr/opt/root/root-6.10.02/include/RWrap_libcpp_string_view.h \
-		/usr/opt/root/root-6.10.02/include/libcpp_string_view.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualQConnection.h \
-		/usr/opt/root/root-6.10.02/include/TInterpreter.h \
-		/usr/opt/root/root-6.10.02/include/TDictionary.h \
-		/usr/opt/root/root-6.10.02/include/TNamed.h \
-		/usr/opt/root/root-6.10.02/include/ESTLType.h \
-		/usr/opt/root/root-6.10.02/include/TVirtualMutex.h \
-		/usr/opt/root/root-6.10.02/include/TQClass.h \
-		/usr/opt/root/root-6.10.02/include/TClass.h \
-		/usr/opt/root/root-6.10.02/include/TObjArray.h \
-		/usr/opt/root/root-6.10.02/include/TObjString.h \
-		/usr/opt/root/root-6.10.02/include/ThreadLocalStorage.h \
-		/usr/opt/root/root-6.10.02/include/TApplicationImp.h \
-		$(ROOTSYS)/include/TSystem.h \
-		/usr/opt/root/root-6.10.02/include/TInetAddress.h \
-		$(ROOTSYS)/include/TTimer.h \
-		/usr/opt/root/root-6.10.02/include/TSysEvtHandler.h \
-		/usr/opt/root/root-6.10.02/include/TTime.h \
-		$(ROOTSYS)/include/TStyle.h \
-		/usr/opt/root/root-6.10.02/include/TAttAxis.h \
-		/usr/opt/root/root-6.10.02/include/TAttLine.h \
-		/usr/opt/root/root-6.10.02/include/TAttFill.h \
-		/usr/opt/root/root-6.10.02/include/TAttText.h \
-		/usr/opt/root/root-6.10.02/include/TAttMarker.h \
-		/usr/opt/root/root-6.10.02/include/TArrayI.h \
-		/usr/opt/root/root-6.10.02/include/TArray.h \
-		/usr/opt/root/root-6.10.02/include/TColor.h \
-		$(ROOTSYS)/include/TROOT.h \
-		/usr/opt/root/root-6.10.02/include/TDirectory.h \
-		/usr/opt/root/root-6.10.02/include/TBuffer.h \
-		/usr/opt/root/root-6.10.02/include/TDatime.h \
-		/usr/opt/root/root-6.10.02/include/TUUID.h \
-		GETmePlots.h \
+main.o: main.cpp GETmePlots.h \
 		GETDecoder.h \
 		$(DAQROOT)/include/CDataSource.h \
 		$(DAQROOT)/include/CDataSourceFactory.h \
@@ -636,18 +453,7 @@ main.o: main.cpp $(ROOTSYS)/include/TApplication.h \
 		$(DAQROOT)/include/CDataFormatItem.h \
 		$(DAQROOT)/include/CGlomParameters.h \
 		processor.h \
-		AnalyzeFrame.h \
-		$(ROOTSYS)/include/TH1D.h \
-		$(ROOTSYS)/include/TH1.h \
-		/usr/opt/root/root-6.10.02/include/TAxis.h \
-		/usr/opt/root/root-6.10.02/include/TArrayD.h \
-		/usr/opt/root/root-6.10.02/include/TArrayC.h \
-		/usr/opt/root/root-6.10.02/include/TArrayS.h \
-		/usr/opt/root/root-6.10.02/include/TArrayF.h \
-		/usr/opt/root/root-6.10.02/include/Foption.h \
-		/usr/opt/root/root-6.10.02/include/TVectorFfwd.h \
-		/usr/opt/root/root-6.10.02/include/TVectorDfwd.h \
-		/usr/opt/root/root-6.10.02/include/TFitResultPtr.h
+		AnalyzeFrame.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 AnalyzeFrame.o: AnalyzeFrame.cpp AnalyzeFrame.h \
