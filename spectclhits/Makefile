@@ -1,4 +1,4 @@
-INSTDIR=/usr/opt/spectcl/5.3-003
+INSTDIR=$(SPECTCLHOME)
 # Skeleton makefile for 3.1
 
 include $(INSTDIR)/etc/SpecTcl_Makefile.include
