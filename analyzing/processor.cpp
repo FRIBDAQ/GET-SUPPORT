@@ -115,7 +115,7 @@ CRingItemProcessor::processStateChangeItem(CRingStateChangeItem& item)
     std::cout << "Occured at: " << std::ctime(&tm)
         << " " << item.getElapsedTime() << " sec. into the run\n";
     m_sink.putItem(item);
-    item.setBodyHeader(item.getEventTimestamp(), item.getSourceId()+1, item.getBarrierType());
+    item.setBodyHeader(item.getEventTimestamp(), item.getSourceId(), item.getBarrierType());
     m_sink.putItem(item);    // Clone for the second ASAD's sid.
 }
 /**
@@ -164,7 +164,7 @@ CRingItemProcessor::processEvent(CPhysicsEventItem& item)
     int asad = hits[0].s_asad;
     size_t requiredSize = hits.size() * sizeof(NSCLGET::Hit) + 100;
     
-    CPhysicsEventItem hitItem(item.getEventTimestamp(), item.getSourceId() + asad, item.getBarrierType(), requiredSize);
+    CPhysicsEventItem hitItem(item.getEventTimestamp(), item.getSourceId(), item.getBarrierType(), requiredSize);
     uint8_t* p = static_cast<uint8_t*>(hitItem.getBodyCursor());
     uint32_t nhits = hits.size();
     memcpy(p, &nhits, sizeof(uint32_t));
