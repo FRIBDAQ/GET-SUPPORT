@@ -14,11 +14,11 @@ CXXFLAGS=$(GETCPPFLAGS) $(ICE_CPPFLAGS) $(QTCXXFLAGS) -g -pthread
 LDFLAGS=-L$(GET)/lib \
 	-lgetbench-eccclient -lmdaq-utl -lmdaq-interfaces -lUtilities \
 	-lCompoundConfig   \
-	-pthread		\
+	-lQtCore  \
+	-pthread  \
 	-Wl,-rpath=$(GET)/lib $(ICE_LIBS) -g
 
 all: daqstart daqstop
-
 
 daqstart: daqstart.o EccClient.o
 	$(CXX) -o daqstart daqstart.o EccClient.o $(LDFLAGS)

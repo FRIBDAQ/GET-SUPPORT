@@ -61,7 +61,8 @@ public:
 	enum ModeADC {DDR, SDR};
 	size_t firstActiveChip() const;
 	void connectNode(const std::string & targetAddress);
-	void loadHwDescription(const std::string& targetAddress, const std::string& hwPath);
+	void removeAllNodes();
+	void loadHwDescription(const std::string& targetAddress, const std::string& hwPath, std::size_t& coboIdx);
 	void daqConnect(const std::string & dataRouterAddress, const std::string & flowType);
 	void daqDisconnect();
 	static void setVerbose(bool verbosity) { verbose = verbosity; };
