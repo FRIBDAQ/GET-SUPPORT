@@ -53,8 +53,11 @@ namespace eval ::GET {
     variable pulserCheckbutton "";      # pulser checkbutton widget.
     variable startPulser  0;            # Reflects the state of the pulser check
 
-    
-    
+    # To maintain a global getEccServer thourghout provides
+
+    variable eccinfo
+    array set eccinfo {}
+
     ##
     #   activeProviders is an array indexed by sourceid.
     #   It's contents are dicts.  The dicts contain:
@@ -123,7 +126,6 @@ proc ::GET::parameters {} {
 #
 proc ::GET::start params {
     set id [dict get $params sourceid]
-    
     
     #  Save this now because we need to modify the initial dict from inside
     #  our utility procs.
@@ -214,8 +216,8 @@ proc ::GET::reseume id {
 #   - stop data taking.
 #   - emit an end run item.
 #
-proc ::GET::end source {
-    set state [::GET::getActiveSource $source]
+proc ::GET::end id {
+    set state [::GET::getActiveSource $id]
     
     ::GET::stopAcquisition [dict get $state parameterization]
     ::GET::emitEndRun $state
@@ -393,7 +395,8 @@ proc ::GET::emitBegin {id num title} {
 		     --type=begin]
     
     puts "Emitting begin run on '$statehost' using '$command'"
-    ReadoutGUIPanel::Log GET log [ssh::ssh $statehost $command]
+    set outring  [dict get $params outputring]
+    ReadoutGUIPanel::Log $outring log [ssh::ssh $statehost $command]
     
     # If that worked we can update the sources dict:
     
@@ -424,11 +427,12 @@ proc ::GET::changeAcquisitionState {params program} {
     
     # If programs daqstart, we need to fold in the value of ::GET::startPulser
     
+    set outring  [dict get $params outputring]
     if {$program eq "daqstart" } {
-        ReadoutGUIPanel::Log GET log \
+        ReadoutGUIPanel::Log $outring log \
             [ssh::ssh $spdaq [list $path $arg1 $arg2 $::GET::startPulser]]
     } else {
-        ReadoutGUIPanel::Log GET log [ssh::ssh $spdaq [list $path $arg1 $arg2]]
+        ReadoutGUIPanel::Log $outring log [ssh::ssh $spdaq [list $path $arg1 $arg2]]
     }
     
     
@@ -479,7 +483,8 @@ proc ::GET::emitEndRun state {
     
     puts "Emitting end run at: '$statehost' using '[list $path --ring-$statering]'"
     
-    ReadoutGUIPanel::Log GET log [ssh::ssh $statehost [list $path --ring=$statering \
+    set outring  [dict get $params outputring]
+    ReadoutGUIPanel::Log $outring log [ssh::ssh $statehost [list $path --ring=$statering \
        --run=$num --title=\"$title\" --source-id=$sourceid \
 							   --type=end --offset $duration]    ]
 
@@ -565,16 +570,27 @@ proc ::GET::killProcess {info host pidkey pipekey processname} {
 #        ::GET::handleOuptut proc.
 # 
 proc ::GET::startEccServer params {
-    set host [dict get $params spdaq]
-    set command [file join $::GET::getBinDir getEccServer]
+    if {[array size ::GET::eccinfo] != 0} {
+        return [list $::GET::eccinfo(pid) $::GET::eccinfo(fd)]
+    }
 
+    set host [dict get $params spdaq]
+    set port [dict get $params eccservice]
+    set command [file join $::GET::getBinDir getEccServer]
     
-    set info [ssh::sshpid $host $command]
+    set info [ssh::sshpid $host [list $command -a :$port]]
     
     set pid [lindex $info 0]
     set fd  [lindex $info 1]
     
-    ::GET::setupOutputHandler $fd
+    set outring  [dict get $params outputring]
+    ::GET::setupOutputHandler getEccServer_$outring $fd
+
+    set ::GET::eccinfo(host) $host
+    set ::GET::eccinfo(port) $port
+    set ::GET::eccinfo(pid)  $pid
+    set ::GET::eccinfo(fd)   $fd
+    set ::GET::eccinfo(outring) $outring
     
     return [list $pid $fd]
 }
@@ -609,6 +625,7 @@ proc ::GET::startNsclRouter params {
     set ringname [::GET::ringname [dict get $params datauri]]
     set srcid    [dict get $params datasourceid]
     set tsSrc    [dict get $params timestampsource]
+
     
     set program \
         [file normalize [file join $::GET::getNsclDaqBindir nscldatarouter]]
@@ -620,7 +637,9 @@ proc ::GET::startNsclRouter params {
     
     set pid [lindex $info 0]
     set fd [lindex $info 1]
-    ::GET::setupOutputHandler $fd
+
+    set outring  [dict get $params outputring]
+    ::GET::setupOutputHandler $outring $fd
     
     return [list $pid $fd]
 }
@@ -654,7 +673,7 @@ proc ::GET::startRingMerge params {
     
     set pid [lindex $info 0]
     set fd [lindex $info 1]
-    ::GET::setupOutputHandler $fd
+    ::GET::setupOutputHandler $outring $fd
     
     return [list $pid $fd]
 }
@@ -693,9 +712,9 @@ proc ::GET::makeRing {host name} {
 #
 #   @note that fd is set in non blocking mode.
 #    
-proc ::GET::setupOutputHandler {fd} {
+proc ::GET::setupOutputHandler {tabtitle fd} {
     fconfigure $fd -blocking 0
-    fileevent $fd readable [list ::GET::handleOutput $fd]
+    fileevent $fd readable [list ::GET::handleOutput $tabtitle $fd]
 }
 ##
 # ::GET::handleOutput
@@ -705,12 +724,12 @@ proc ::GET::setupOutputHandler {fd} {
 #      submit it as a log message to the console.
 #
 # @param fd - File descriptor that is readable.
-proc ::GET::handleOutput {fd} {
+proc ::GET::handleOutput {tabtitle fd} {
     if {[eof $fd]} {
         fileevent $fd readable ""
     } else {
         set line [gets $fd]
-        ReadoutGUIPanel::Log GET log $line       
+        ReadoutGUIPanel::Log $tabtitle log $line       
     }
 }
 
