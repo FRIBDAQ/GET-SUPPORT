@@ -12,13 +12,16 @@ QTCXXFLAGS=-I/usr/include/qt4/QtCore/ -I/usr/include/qt4
 
 CXXFLAGS=$(GETCPPFLAGS) $(ICE_CPPFLAGS) $(QTCXXFLAGS) -g -pthread
 LDFLAGS=-L$(GET)/lib \
-	-lgetbench-eccclient -lmdaq-utl -lmdaq-interfaces -lUtilities \
+	-lgetbench-eccclient -lgetbench-cfg -lmdaq-utl -lmdaq-interfaces -lUtilities \
 	-lCompoundConfig   \
 	-lQtCore  \
 	-pthread  \
 	-Wl,-rpath=$(GET)/lib $(ICE_LIBS) -g
 
-all: daqstart daqstop
+all: daqstart daqstop configure
+
+configure: configure.o EccClient.o GetController.o
+	$(CXX) -o configure configure.o EccClient.o GetController.o $(LDFLAGS)
 
 daqstart: daqstart.o EccClient.o
 	$(CXX) -o daqstart daqstart.o EccClient.o $(LDFLAGS)
@@ -29,9 +32,10 @@ daqstop: daqstop.o EccClient.o
 
 
 clean:
-	rm -f *.o daqstart daqstop
+	rm -f *.o daqstart daqstop configure
 
 
 install: all
 	install daqstart  $(PREFIX)/bin
 	install daqstop   $(PREFIX)/bin
+	install configure $(PREFIX)/bin
