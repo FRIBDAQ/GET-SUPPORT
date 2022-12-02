@@ -70,6 +70,10 @@ proc RemoteUtil::remotePid {host command} {
     return $result
 }
 ##
+# To Do: A method for keeping a SSH session for multiple command
+#        e.g.) process status check, daqstart/daqstop/configure
+#
+##
 # RemoteUtil::kill
 #    Kill a remote process given its PID. Usually used in conjunction
 #    with RemoteUtil::remotePid to query the pid of a specific process
