@@ -75,6 +75,7 @@ class GetController {
     virtual ~GetController() {};
 
     void removeAllNodes();
+    void setEccServerAddress(std::string address);
     void loadHw(std::size_t coboIdx, std::string& targetEndpoint,
                 std::string& datarouterEndpoint, std::string& hwDescription);
     void configure(std::size_t coboIdx, std::string& targetEndpoint);
@@ -93,6 +94,7 @@ class GetController {
     uint16_t asadMask_; ///< Mask of AsAd board(s) to enable (0 to 3)
     CCfg::Io::Document runCfgDoc_; ///< Document describing the run conditions
     CCfg::CConfig runCfg_; ///< Run conditions
+    std::string eccServerAddress;
 
     void setMasks(CCfg::CConfig coboCfg);
     void setCoBoLemoModes(const size_t& coboIdx);

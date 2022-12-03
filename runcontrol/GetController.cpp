@@ -117,7 +117,8 @@ inline uint64_t logtwo(uint64_t seed)
 }
 
 GetController::GetController(std::string& conditionFile) :
-	coboInstanceName_("CoBo")
+	coboInstanceName_("CoBo"),
+  eccServerAddress("127.0.0.1:46002")
 {
 	std::cout << "Creating test controller" << std::endl;
 
@@ -151,6 +152,13 @@ GetController::GetController(std::string& conditionFile) :
 }
 //__________________________________________________________________________________________________
 /**
+ * Setting eccServer address
+ */
+void GetController::setEccServerAddress(std::string address) {
+  eccServerAddress = address;
+}
+//__________________________________________________________________________________________________
+/**
  * Method for removing all nodes is exposed to public
  */
 void GetController::removeAllNodes() {
@@ -165,7 +173,7 @@ EccClient& GetController::eccClient()
 {
 	if (!eccClient_.get())
 	{
-		eccClient_.reset(new EccClient("127.0.0.1:46002"));
+		eccClient_.reset(new EccClient(eccServerAddress));
 		eccClient_->setVerbose(isVerbose());
 		std::cerr << "Created client for connection to ECC server " << "FRIB ECC CLIENT" << std::endl;
 		MSG_IF(verbose) << "Verbose mode is " << (isVerbose() ? "" : "NOT ") << "enabled";
