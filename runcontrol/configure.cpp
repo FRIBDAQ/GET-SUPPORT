@@ -20,9 +20,14 @@
  * @author Genie Jhang <changj@frib.msu.edu>
  */
 
+#include "configureOpts.h"
 #include "GetController.h"
+
 #include <iostream>
 #include <string>
+#include <vector>
+#include <sstream>
+#include <limits.h> /* PATH_MAX */
 #include <stdlib.h>
 
 /**
@@ -32,31 +37,110 @@
 int
 main(int argc, char** argv)
 {
-  // To be rewritten using gengetopt
-  // 1. File path can be either relative or absolute
-  // 2. CoBo addresses and datarouter addresses will be at last 
-  //    so that use can add as many boards as they want
-  std::string endpoints[2] = {"10.65.30.51:46001", "10.65.30.52:46001"};
-  std::string drEndpoints[2] = {"10.65.31.154:46005", "10.65.31.154:46055"};
-  std::string hwDesc = "/user/0400x/s800_get_test_101322/hardwareDescription_fullCoBoStandAlone.xcfg";
-  std::string cfgFile = "/user/0400x/s800_get_test_101322/configure-internalPulser-2cobos1asad.xcfg";
+  gengetopt_args_info args;
+  cmdline_parser(argc, argv, &args);
 
-  int numCobos = atoi(argv[1]);
+  // Check if the hardware description file exists.
+  // If it does, set the absolute path to 'hwDesc'.
+  char pathBuffer[PATH_MAX];
+  memset(pathBuffer, 0, PATH_MAX);
+  char *realpathResult = realpath(args.hwdesc_arg, pathBuffer); 
+  std::string hwDesc = "";
+
+  std::cout << " == Connect to ECC server: " << args.ecc_arg << std::endl;
+  
+  if (realpathResult == NULL) {
+    std::cerr << " == Unable to find the file \"" << args.hwdesc_arg << "\"!" << std::endl;
+
+    exit(EXIT_FAILURE);
+  } else {
+    std::cout << " == Hardware description found: " << realpathResult << std::endl;
+
+    hwDesc = realpathResult;
+  }
+
+  // Check if the configuration condition file exists.
+  // If it does, set the absolute path to 'condition'.
+  memset(pathBuffer, 0, PATH_MAX);
+  realpathResult = realpath(args.cond_arg, pathBuffer); 
+  std::string condition = "";
+
+  if (realpathResult == NULL) {
+    std::cerr << " == Unable to find the file \"" << args.cond_arg << "\"!" << std::endl;
+
+    exit(EXIT_FAILURE);
+  } else {
+    std::cout << " == Configuration condition found: " << realpathResult << std::endl;
+
+    condition = realpathResult;
+  }
+
+  // Parse target argument
+  std::vector<std::string> coboAddresses;
+  std::vector<std::string> ndrAddresses;
+
+  for (int iTarget = 0; iTarget < args.targets_given; iTarget++) {
+    std::stringstream oneTargetArgument(args.targets_arg[iTarget]);
+
+    if (oneTargetArgument.str().find_first_of('-') == std::string::npos) {
+      std::cerr << " == Wrong target address provided \"" << oneTargetArgument.str() << "\"!" << std::endl;
+
+      exit(EXIT_FAILURE);
+    }
+
+    std::string item;
+    std::getline(oneTargetArgument, item, '-');
+    coboAddresses.push_back(item);
+    std::getline(oneTargetArgument, item, '-');
+    ndrAddresses.push_back(item);
+
+    std::cout << " == CoBo " << iTarget << ": " << coboAddresses[iTarget];
+    std::cout << " -> nscldatarouter: " << ndrAddresses[iTarget] << std::endl;
+  }
+
+  int numCobos = coboAddresses.size();
+
 
   // GetController instance created with a configuration file path
-  auto getController = new GetController(cfgFile);
+  std::cout << std::endl;
+  std::cout << " ============================================" << std::endl;
+  std::cout << " == Start GetController" << std::endl;
+  std::cout << " ============================================" << std::endl;
+  std::cout << std::endl;
+
+  auto getController = new GetController(condition);
+  getController -> setEccServerAddress(args.ecc_arg);
 
   // Must remove all loaded/configured nodes before do anything.
+  std::cout << std::endl;
+  std::cout << " ============================================" << std::endl;
+  std::cout << " == Removing all configureed CoBos" << std::endl;
+  std::cout << " ============================================" << std::endl;
+  std::cout << std::endl;
+
   getController -> removeAllNodes();
 
   // Load the hardware first.
   for (int iCobo = 0; iCobo < numCobos; iCobo++) {
-    getController -> loadHw(iCobo, endpoints[iCobo], drEndpoints[iCobo], hwDesc);
+    std::cout << std::endl;
+    std::cout << " ============================================" << std::endl;
+    std::cout << " == Start loading hardware of CoBo " << iCobo << std::endl;
+    std::cout << " ============================================" << std::endl;
+    std::cout << std::endl;
+
+    getController -> loadHw(iCobo, coboAddresses[iCobo], ndrAddresses[iCobo], hwDesc);
   }
+
 
   // Configure the boards with configuration file provided to the constructor.
   for (int iCobo = 0; iCobo < numCobos; iCobo++) {
-    getController -> configure(iCobo, endpoints[iCobo]);
+    std::cout << std::endl;
+    std::cout << " ============================================" << std::endl;
+    std::cout << " == Start configuring Cobo " << iCobo << std::endl;
+    std::cout << " ============================================" << std::endl;
+    std::cout << std::endl;
+
+    getController -> configure(iCobo, coboAddresses[iCobo]);
   }
 
   exit(EXIT_SUCCESS);

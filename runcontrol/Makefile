@@ -1,5 +1,6 @@
 GET=/usr/opt/GET
-NSCLDAQ=/usr/opt/nscldaq/11.3-004
+NSCLDAQ=/usr/opt/nscldaq/11.3-029
+GENGENOPT=/usr/bin/gengetopt
 
 ICE_CPPFLAGS=-DICEUTIL_HEADER\(header\)="<IceUtil/header>" \
 	-DICE_EDITION=Ice -DICE_HEADER\(header\)="<Ice/header>"
@@ -18,24 +19,25 @@ LDFLAGS=-L$(GET)/lib \
 	-pthread  \
 	-Wl,-rpath=$(GET)/lib $(ICE_LIBS) -g
 
-all: daqstart daqstop configure
+BINARIES = daqstart daqstop configure
 
-configure: configure.o EccClient.o GetController.o
-	$(CXX) -o configure configure.o EccClient.o GetController.o $(LDFLAGS)
+all: $(BINARIES)
+
+configureOpts.o: configureOpts.ggo
+	$(GENGENOPT) --output-dir=$(PWD) --input=$^ -F $(patsubst %.ggo,%,$^)
+	$(CXX) -c $(patsubst %.ggo,%.c,$^)
+
+configure: configure.o EccClient.o GetController.o configureOpts.o
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 daqstart: daqstart.o EccClient.o
-	$(CXX) -o daqstart daqstart.o EccClient.o $(LDFLAGS)
-
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 daqstop: daqstop.o EccClient.o
-	$(CXX) -o daqstop daqstop.o EccClient.o $(LDFLAGS)
-
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f *.o daqstart daqstop configure
-
+	rm -f *.o $(BINARIES) configureOpts.h configureOpts.c
 
 install: all
-	install daqstart  $(PREFIX)/bin
-	install daqstop   $(PREFIX)/bin
-	install configure $(PREFIX)/bin
+	install $(BINARIES)  $(PREFIX)/bin

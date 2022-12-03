@@ -1,0 +1,8 @@
+package "configure"
+version "1.0"
+purpose "Command-line interface for load/configure CoBos"
+
+option "ecc" e "eccServer address ex) 1.2.3.4:46002" string optional default="127.0.0.1:46002"
+option "hwdesc" h "Hardware description file" string required
+option "cond" c "Configuration condition file" string required
+option "targets" t "Dash-separated pair of target address and nscldatarouter address ex) 1.2.3.4:46001-5.6.7.8:46005" string required multiple
