@@ -37,6 +37,12 @@
 int
 main(int argc, char** argv)
 {
+  if (argc == 1) {
+    cmdline_parser_print_help();
+
+    exit(EXIT_FAILURE);
+  }
+
   gengetopt_args_info args;
   cmdline_parser(argc, argv, &args);
 
