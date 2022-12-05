@@ -1,0 +1,8 @@
+package "daqcontrol"
+version "1.0"
+purpose "Command-line interface for controlling CoBos"
+
+option "command" c "Controlling command(start or stop)" string required
+option "targets" t "Target socket address ex) 1.2.3.4:46001" string required multiple
+option "ecc" e "eccServer address ex) 1.2.3.4:46002" string optional default="127.0.0.1:46002"
+option "pulser" p "Pulsing AsAds using internal pulser (on or off)" string optional default="off"

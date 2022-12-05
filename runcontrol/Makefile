@@ -19,7 +19,7 @@ LDFLAGS=-L$(GET)/lib \
 	-pthread  \
 	-Wl,-rpath=$(GET)/lib $(ICE_LIBS) -g
 
-BINARIES = daqstart daqstop configure
+BINARIES = daqstart daqstop configure daqcontrol
 
 all: $(BINARIES)
 
@@ -27,7 +27,14 @@ configureOpts.o: configureOpts.ggo
 	$(GENGENOPT) --output-dir=$(PWD) --input=$^ -F $(patsubst %.ggo,%,$^)
 	$(CXX) -c $(patsubst %.ggo,%.c,$^)
 
-configure: configure.o EccClient.o GetController.o configureOpts.o
+configure: EccClient.o GetController.o configureOpts.o configure.o 
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+daqcontrolOpts.o: daqcontrolOpts.ggo
+	$(GENGENOPT) --output-dir=$(PWD) --input=$^ -F $(patsubst %.ggo,%,$^)
+	$(CXX) -c $(patsubst %.ggo,%.c,$^)
+
+daqcontrol: EccClient.o daqcontrolOpts.o daqcontrol.o 
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 daqstart: daqstart.o EccClient.o
@@ -37,7 +44,7 @@ daqstop: daqstop.o EccClient.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f *.o $(BINARIES) configureOpts.h configureOpts.c
+	rm -f *.o $(BINARIES) configureOpts.h configureOpts.c daqcontrolOpts.h daqcontrolOpts.c
 
 install: all
 	install $(BINARIES)  $(PREFIX)/bin
