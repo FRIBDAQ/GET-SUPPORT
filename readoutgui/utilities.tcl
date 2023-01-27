@@ -42,6 +42,26 @@ package require ssh
 namespace eval RemoteUtil {
     set myUserName $::tcl_platform(user)
 }
+
+##
+# sshnative
+#    Run command on the provided host not loading container environment
+#    Also suppress login message to get proper standard output stringss
+#
+# @param host - host to connect to
+# @param command - command string to run on the host
+#
+
+proc RemoteUtil::sshnative {host command} {
+    set stat [catch {set output [eval exec ssh -q $host $command]} error]
+    
+    if {$stat != 0} {
+        append output "\n" $error
+    }
+    
+    return $output
+}
+
 ##
 # remotePid
 #    Returns the PID of a command running in a remote system.
@@ -52,15 +72,14 @@ namespace eval RemoteUtil {
 # @retval "" if there's no matching process
 #
 proc RemoteUtil::remotePid {host command} {
-    set processes [ssh::ssh \
-        $host [list ps -C $command -o user=,command=,pid=]  \
+    set processes [RemoteUtil::sshnative \
+        $host [list ps -C $command -o user=,pid=]  \
     ]
     set processes [split $processes "\n"]
     
     set result [list]
     foreach process $processes {
         set user [lindex $process 0]
-	set proc [file tail [lindex $process 1]]
         set pid [lindex $process end]
         if {($user eq $::RemoteUtil::myUserName)} {
             lappend result $pid
@@ -69,10 +88,6 @@ proc RemoteUtil::remotePid {host command} {
     
     return $result
 }
-##
-# To Do: A method for keeping a SSH session for multiple command
-#        e.g.) process status check, daqstart/daqstop/configure
-#
 ##
 # RemoteUtil::kill
 #    Kill a remote process given its PID. Usually used in conjunction
@@ -84,5 +99,5 @@ proc RemoteUtil::remotePid {host command} {
 # @param signal - Optional signal to use to kill the process.
 #
 proc RemoteUtil::kill {host pid {signal 9}} {
-    ssh::ssh $host [list kill -$signal $pid ]
+    RemoteUtil::sshnative $host [list kill -$signal $pid]
 }
