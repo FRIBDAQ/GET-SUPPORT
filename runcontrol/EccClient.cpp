@@ -92,6 +92,14 @@ get::GetEccPrx EccClient::ecc()
 	return ecc_;
 }
 //__________________________________________________________________________________________________
+void EccClient::destroy()
+{
+  try {
+    ::mdaq::utl::Server::ic() -> destroy();
+  }
+  catch (const Ice::Exception &) {}
+}
+//__________________________________________________________________________________________________
 /**
  * Returns ID (0 to 15) of first active chip
  */

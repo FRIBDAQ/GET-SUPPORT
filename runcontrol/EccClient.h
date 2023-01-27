@@ -56,6 +56,7 @@ public:
 	EccClient(const std::string& ipDotDecimalAndPort, const std::string& servantName = "Ecc");
 	virtual ~EccClient() {}
 	get::GetEccPrx ecc();
+  void destroy();
 
 	/* Constants */
 	enum ModeADC {DDR, SDR};
