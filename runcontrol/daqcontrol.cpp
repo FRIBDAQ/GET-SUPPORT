@@ -115,6 +115,8 @@ main(int argc, char** argv)
       client.daqCtrl(false);
     }
   }
+
+  client.destroy();
   
   exit(EXIT_SUCCESS);
 }
