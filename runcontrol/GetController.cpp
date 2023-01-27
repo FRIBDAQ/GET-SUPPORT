@@ -429,6 +429,11 @@ void GetController::configure(std::size_t coboIdx, std::string& targetEndpoint)
 	eccClient().setCoBoInitDone(true);
 }
 //__________________________________________________________________________________________________
+void GetController::destroyCommunicator()
+{
+  eccClient().destroy();
+}
+//__________________________________________________________________________________________________
 /**
  * Sets function of the 4 LEMO connectors on the CoBo front panel.
  */

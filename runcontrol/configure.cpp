@@ -149,5 +149,7 @@ main(int argc, char** argv)
     getController -> configure(iCobo, coboAddresses[iCobo]);
   }
 
+  getController -> destroyCommunicator();
+
   exit(EXIT_SUCCESS);
 }

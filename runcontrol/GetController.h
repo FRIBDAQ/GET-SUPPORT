@@ -80,6 +80,8 @@ class GetController {
                 std::string& datarouterEndpoint, std::string& hwDescription);
     void configure(std::size_t coboIdx, std::string& targetEndpoint);
 
+    void destroyCommunicator();
+
     static void setVerbose(bool verbose_) { verbose = verbose_; }
     static bool isVerbose() { return verbose; }
 
