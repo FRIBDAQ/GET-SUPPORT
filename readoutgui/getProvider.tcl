@@ -53,10 +53,26 @@ namespace eval ::GET {
     variable pulserCheckbutton "";      # pulser checkbutton widget.
     variable startPulser  0;            # Reflects the state of the pulser check
 
-    # To maintain a global getEccServer thourghout provides
+    # Storage for shared information
 
-    variable eccinfo
-    array set eccinfo {}
+    variable sharedInfo
+    array set sharedInfo [list]
+    set sharedInfo(numGetEccServers) 0
+    set sharedInfo(getpids) [list]
+    set sharedInfo(routerpids) [list]
+    set sharedInfo(ringmergepids) [list]
+    set sharedInfo(pipepids) [list]
+    set sharedInfo(status) 1
+
+    # Variables for procs responding to checks by DatasourceManager
+
+    variable checkPeriod
+    variable checkEnabled
+    variable checkingPids
+    # Period in ms
+    set checkPeriod 300000
+    set checkEnabled 1
+    set checkingPids [list]
 
     ##
     #   activeProviders is an array indexed by sourceid.
@@ -111,12 +127,17 @@ proc ::GET::parameters {} {
 #    -   Start the remote and local persistent processes:
 #        * (target)  getEccServer
 #        * (target)  nsclrouter
+#        * (target)  daqcontrolpipe
+#        * (target)  statepipe
 #        * (local)   ringmerge
-#    -  Remind the user they need to run GetController at least once to
+#    -  Remind the user they need to click 'Configure CoBo(s)' button to
 #       load firmware and configuration for the GET hardware.
 #
 #    If all of this works, we store the definition and state for
 #    this source in activeProviders.
+#
+#    Some information is stored in sharedInfo array. See namespace definition
+#    to learn what information is stored there.
 #
 #    IF this id already has a definition it is replaced and it is assumed
 #    a stop was already done on that source.
@@ -131,25 +152,20 @@ proc ::GET::start params {
     #  our utility procs.
     
     set ::GET::activeProviders($id) [dict create parameterization $params]
-    
-    #  Kill off the existing get procs:
-    
-    ::GET::killPersistentProcesses $id
-    
+
     #  Create the ringbuffers:
     
     ::GET::createRingBuffers $id
-    
-    #  Start the persistent processes we need:
+
+    #  Initial clean up persistent processes
+
+    ::GET::initialProcessCleanup $id
+
+    #  Start the processes for each source we need:
     
     ::GET::startPersistentProcesses $id
     
-    #  Success - remind the user to run GetController
-    
-    tk_messageBox    \
-        -icon info -title "GetController" -type ok                          \
-        -message "Remember to run GetController to load/configure the firmware
-and connect the nsclrouter to the datatflow."
+    #  Success - remind the user to configure CoBo(s)
 }
 
 ##
@@ -157,17 +173,19 @@ and connect the nsclrouter to the datatflow."
 #
 #   liveness means that all of the persistent processes needed to run
 #   GET are alive (getEccServer, nsclrouter and ringmerge).
+#   
+#   The variable is updated periodically set in $::GET::checkPeriod
+#   with OR condition. If any one fails, status variable becomes 0.
 #
 #      @return bool - true if the source is still live.
 #
 proc ::GET::check id {
-    
-    set state [::GET::getActiveSource $id]
-    return [GET::checkPersistentProcesses $state]
+    return $::GET::sharedInfo(status)
 }
 ##
 #  ::GET::stop
-#    Stop a data source - just stops the persistent processes.
+#    Stop a data source - just stops the persistent processes,
+#    closes pipes for the processes and kills the connection.
 #
 # @param id - source id to stop.
 #
@@ -175,6 +193,9 @@ proc ::GET::stop id {
     if {[array names ::GET::activeProviders $id] eq ""} {
         error "There's no GET data source with the id $id to stop"
     }
+
+    set ::GET::checkEnabled 0 
+    set ::GET::checkingPids [list]
     
     killPersistentProcesses $id
     array unset ::GET::activeProviders $id
@@ -186,23 +207,26 @@ proc ::GET::stop id {
 #    - Store start time
 #    - Start the run in the GET electronics..
 #
-# @param source  - id of the source to begin.
+# @param id      - id of the source to begin.
 # @param runNum  - Number of the run being started.
 # @param title   - Title of the run being started.
 #
-proc ::GET::begin {source runNum title} {
-    set state [::GET::getActiveSource $source];     # Really just to check id's ok.
+proc ::GET::begin {id runNum title} {
+    set state [::GET::getActiveSource $id];     # Really just to check id's ok.
     
     #  Emit the begin run item:
     
-    ::GET::emitBegin $source $runNum $title
+    ::GET::emitBegin $id $runNum $title
         
-    ::GET::startAcquisition  [dict get $state parameterization]
+    ::GET::startAcquisition $id
     
 }
 
 ##
 # Pause and resume are not supported in GET runs:
+# 
+# Using daqcontrol, one can implement pause and resume.
+# Just start/stop the GET DAQ without resetting timestamp.
 
 proc ::GET::pause id {
     error "GET data sources do not support pause"
@@ -219,7 +243,7 @@ proc ::GET::reseume id {
 proc ::GET::end id {
     set state [::GET::getActiveSource $id]
     
-    ::GET::stopAcquisition [dict get $state parameterization]
+    ::GET::stopAcquisition $id
     ::GET::emitEndRun $state
 }
 
@@ -232,8 +256,7 @@ proc ::GET::end id {
 # @param id - source id of the source to re-init.
 #
 proc ::GET::init id {
-    set state [::GET::getActiveSource $id]
-    ::GET::killPersistentProcesses $state;          # Can use the PIDS and close fds.
+    ::GET::killPersistentProcesses $id
     ::GET::startPersistentProcesses $id
 }
 ##
@@ -259,6 +282,7 @@ proc  GET::capabilities {} {
 # @return dict = See comments in activeProviders for information about
 #                the keys/values.
 # @throw - if the id is not an active source id
+#
 proc ::GET::getActiveSource id {
     if {[array  names ::GET::activeProviders $id] eq $id} {
         return $::GET::activeProviders($id)
@@ -266,86 +290,183 @@ proc ::GET::getActiveSource id {
         error "There is no active source with the id $id"
     }
 }
+
 ##
-# ::GET::killPersistsentProcesses
+# ::GET::initialProcessCleanup
+#    Checks if the persistent processes are running under this username.
+#    If found and they're not started by other datasource within this DAQ,
+#    kill those processes.
 #
-#   Stops the persistent processes that make up an id.
+#    Processes started by this DAQ are managed by "remote PID" in
+#    arrays having those PIDs.
+#
+# @param id - Id to lookup
+#
+proc ::GET::initialProcessCleanup id {
+    set info [::GET::getActiveSource $id]
+    set params [dict get $info parameterization]
+
+    set gethost [dict get $params spdaq]
+    set routerhost $gethost
+    set thishost [exec hostname]
+
+    set getpids [RemoteUtil::remotePid $gethost getEccServer]
+    set routerpids [RemoteUtil::remotePid $routerhost nscldatarouter]
+    set ringmergepids [RemoteUtil::remotePid $thishost ringmerge]
+
+    set getpids [::GET::removeOwnedPids $getpids getpids]
+    set routerpids [::GET::removeOwnedPids $routerpids routerpids]
+    set ringmergepids [::GET::removeOwnedPids $ringmergepids ringmergepids]
+
+    set totalProcesses [expr [llength $getpids] + [llength $routerpids] + [llength $ringmergepids]]
+
+    if {$totalProcesses > 0} {
+#        set response [tk_messageBox -icon question -type yesno \
+#                    -title "Persistent processes found!" \
+#                    -message "Do you want to kill process(es)?" \
+#                    -detail "Following process(es) are found in each host:\n
+#getEccServer: [llength $getpids] process(es)\n
+#nscldatarouter: [llength $routerpids] process(es)\n
+#ringmerge: [llength $ringmergepids] process(es)"]
+        
+#        if {$response eq yes} {
+            puts "Killing getEccServer(s)...."
+            RemoteUtil::kill $gethost $getpids
+            puts "Killing nscldatarouter(s)...."
+            RemoteUtil::kill $routerhost $routerpids
+            puts "Killing ringmerge(s)...."
+            RemoteUtil::kill $thishost $ringmergepids
+#        }
+    }
+}
+
+##
+# ::GET::killPersistentProcesses
+#
+#   Stops the persistent processes and pipes that make up an id.
 #   If the dict that defines the source has pids set, then
 #   we do surgical strikes killing by PID -- and then
-#   removing the PID dict keys.  If not we assume there's really
-#   only one guy that can use the GET interface system so we do killalls
-#   by process name.  The success of that will, of course be limited to
-#   processes this user started.
+#   removing the PID dict keys. Closing the pipes created for them.
 #
 # @param id - the source id that specifies the provider.  This
 #             provides hostnames as well as potentially pids in those hostnames.
 #
 proc ::GET::killPersistentProcesses id {
     set info [::GET::getActiveSource $id]
-    set  params [dict get $info parameterization]
-    set  gethost [dict get $params spdaq]
-    set  routerhost $gethost
+    set params [dict get $info parameterization]
+
+    set gethost [dict get $params spdaq]
+    set routerhost $gethost
     set thishost [exec hostname]
-#    set  routerhost [::GET::ringhost [dict get $params datauri]]
+    set statehost [::GET::ringhost [dict get $params stateuri]]
     
     # Now do the kills.
     
-    ::GET::killProcess $info $gethost geteccserver eccserveroutput getEccServer
-    ::GET::killProcess $info $routerhost \
-	nsclrouter routeroutput   nscldatarouter
-    ::GET::killProcess $info $thishost   ringmerge  mergeout       ringmerge
+    ::GET::killProcess $info $gethost geteccserver eccserveroutput \
+                                        getEccServer getpids
+    ::GET::killProcess $info $routerhost nsclrouter routeroutput \
+                                        nscldatarouter routerpids
+    ::GET::killProcess $info $thishost ringmerge  mergeout \
+                                        ringmerge ringmergepids
+    ::GET::killProcess $info $gethost daqcontrol daqcontrolfd \
+                                        daqcontrolpipe pipepids
+    ::GET::killProcess $info $statehost state statefd \
+                                        statepipe pipepids
 
     after 1000;     # Wait for them to die.
 }
-
 
 ##
 # ::GET::startPersistentProcesses
 #    Starts the persistent GET processes for the source id specified.
 #    These include:
-#    - getEccServer - which must be run in the spdaq host.
-#    - nsclrouter   - which is run in the system specified by the data ring uri.
-#    - ringmerge    - which must be run in this host.
+#    - getEccServer   - which must be run in the spdaq host.
+#    - nsclrouter     - which is run in the system specified by the data ring uri.
+#    - daqcontrolpipe - SSH pipe to spdaq host keep open until exit
+#                       to submit DAQ start/stop
+#    - statepipe      - SSH pipe to this host keep open until exit
+#                       to emit begin/end RingItem to rings
+#    - ringmerge      - which must be run in this host.
+#
+#    Once all the processes start up, each PID is stored in sharedInfo(pidarray).
+#    This is prepared to enable multiple CoBo use.
 #
 proc ::GET::startPersistentProcesses id {
     set info [::GET::getActiveSource $id]
     set params [dict get $info parameterization]
     
     set result [::GET::startEccServer $params]
-    dict set info geteccserver [lindex $result 0] eccserveroutput [lindex $result 1]
-    
+    dict set info geteccserver [lindex $result 0]
+    dict set info eccserveroutput [lindex $result 1]
+
+    set result [::GET::startDaqcontrolPipe $params]
+    dict set info daqcontrol [lindex $result 0]
+    dict set info daqcontrolfd [lindex $result 1]
+
+    set result [::GET::startStatePipe $params]
+    dict set info state [lindex $result 0]
+    dict set info statefd [lindex $result 1]
+
     set result [::GET::startNsclRouter $params]
-    dict set info nsclrouter [lindex $result 0] routeroutput [lindex $result  1]
-    
+    dict set info nsclrouter [lindex $result 0]
+    dict set info routeroutput [lindex $result 1]
+
     set result [::GET::startRingMerge $params]
-    dict set info ringmerge [lindex $result 0] mergeout [lindex $result 1]
-    
-    set ::GET::activeProviders($id) $info;            # Update the dict.
+    dict set info ringmerge [lindex $result 0]
+    dict set info mergeout [lindex $result 1]
+
+    set ::GET::activeProviders($id) $info;         # Update the dict.
 
     after 5000;                                    # Wait for the start
+
+    # Since it takes time to run stuff, updating comes at the end
+
+    ::GET::checkAndUpdatePid [dict get $params eccip] getEccServer getpids
+    ::GET::checkAndUpdatePid [dict get $params spdaq] nscldatarouter routerpids
+    ::GET::checkAndUpdatePid [exec hostname] ringmerge ringmergepids
+    lappend ::GET::sharedInfo(pipepids) {*}[::GET::removeDuplicates \
+    [list [dict get $info daqcontrol] [dict get $info state]] $::GET::sharedInfo(pipepids)]
 }
+
 ##
-# GET::checkPersistentProcesses
-#    Given the pids of the persistent processes (in the info block) and the
-#    hosts in which they are running, determines if all of them are running.
+# ::GET::startPeriodicCheck
+#    Starting asynchronous periodic process check for DatasourceManager
 #
-# @param infoi - information dict about the current run.
-# @return bool - true if all persistent processes are running.
+proc ::GET::startPeriodicCheck {host name pid} {
+    puts "Initiate process check of $name ($pid) in $host every $::GET::checkPeriod ms"
+
+    ::GET::checkProcess $host $name $pid
+}
+
+##
+# ::GET::checkProcesses
+#    Checks if the process having matching name and pid is 
+#    running in the given host. The result is ORed with the other
+#    processes' results, then updates global status variable
 #
-proc ::GET::checkPersistentProcesses info {
-    set  params [dict get $info parameterization]
-    set  gethost [dict get $params spdaq]
-    set routerhost $gethost
-    set thisHost [exec hostname]
+# @param host - the host where the process is running
+# @param name - process name supposed to be running in the hose
+# @param pid  - process pid supposed to be running in the host
+#
+proc ::GET::checkProcess {host name pid} {
+    if {!$::GET::checkEnabled} {
+        return
+    }
+
+    set status 1
+
+    set remotePids [RemoteUtil::remotePid $host $name]
+
+    set index [lsearch $remotePids $pid]
+    if {$index < 0} {
+        set status 0
+    }
     
-    #set  routerhost [::GET::ringhost [dict get $params datauri]]
-    
-    set eccok    [::GET::checkProcess getEccServer $gethost]
-    set routerok [::GET::checkProcess nscldatarouter $routerhost]
-    set mergeok  [::GET::checkProcess ringmerge $thisHost]
-    
-    return [expr {$eccok && $routerok && $mergeok}]
-    
+    set ::GET::sharedInfo(status) [expr $::GET::sharedInfo(status) & $status]
+
+    if {$::GET::checkEnabled} {
+        after $::GET::checkPeriod [list ::GET::checkProcess $host $name $pid]
+    }
 }
 ##
 # GET::createRingBuffers
@@ -380,6 +501,7 @@ proc ::GET::emitBegin {id num title} {
     set info [::GET::getActiveSource $id]
     set params [dict get $info parameterization]
     
+    set statefd [dict get $info statefd]
     set statehost [::GET::ringhost [dict get $params stateuri]]
     set statering [::GET::ringname [dict get $params stateuri]]
     set sourceid  [dict get $params datasourceid]
@@ -390,13 +512,11 @@ proc ::GET::emitBegin {id num title} {
     
     set path [file join $::GET::getNsclDaqBindir insertstatechange]
 
-    set command [list $path --ring=$statering --run=$num --title=\"$title\" \
-	--source-id=$sourceid \
-		     --type=begin]
+    set command [join [list $path --ring=$statering --run=$num --title=\"$title\" \
+            	--source-id=$sourceid --type=begin]]
     
     puts "Emitting begin run on '$statehost' using '$command'"
-    set outring  [dict get $params outputring]
-    ReadoutGUIPanel::Log $outring log [ssh::ssh $statehost $command]
+    puts $statefd $command
     
     # If that worked we can update the sources dict:
     
@@ -413,30 +533,24 @@ proc ::GET::emitBegin {id num title} {
 # @param params - the parameterization of the data source.
 # @param command - The command tail of the program to do this
 #
-proc ::GET::changeAcquisitionState {params program} {
-    set coboip [dict get $params coboip]
-    set cobosvc [dict get $params coboservice]
-    set arg1 $coboip:$cobosvc
-    
+proc ::GET::changeAcquisitionState {id program control} {
+    set info [::GET::getActiveSource $id]
+    set params [dict get $info parameterization]
+
+    set daqcontrolfd [dict get $info daqcontrolfd]
     set ecchost [dict get $params eccip]
     set eccsvc [dict get $params eccservice]
-    set arg2 $ecchost:$eccsvc
-    
-    set spdaq [dict get $params spdaq]
-    set path [file join $::GET::getNsclDaqBindir $program]
-    
-    # If programs daqstart, we need to fold in the value of ::GET::startPulser
-    
-    set outring  [dict get $params outputring]
-    if {$program eq "daqstart" } {
-        ReadoutGUIPanel::Log $outring log \
-            [ssh::ssh $spdaq [list $path $arg1 $arg2 $::GET::startPulser]]
-    } else {
-        ReadoutGUIPanel::Log $outring log [ssh::ssh $spdaq [list $path $arg1 $arg2]]
-    }
-    
-    
-    
+    set eccArgs $ecchost:$eccsvc
+
+    set coboip [dict get $params coboip]
+    set cobosvc [dict get $params coboservice]
+    set coboArgs $coboip:$cobosvc
+
+    set program [file join $::GET::getNsclDaqBindir $program]
+    set command [list $program -c $control -t $coboArgs -e $eccArgs \
+                        -p [expr {$::GET::startPulser ? "on" : "off"}]]
+
+    puts $daqcontrolfd $command
 }
 ##
 # ::GET::startAcquisition
@@ -448,16 +562,16 @@ proc ::GET::changeAcquisitionState {params program} {
 #                 We need the coboip, coboservice the spdaq and eccip and
 #                 eccservice
 #                 
-proc ::GET::startAcquisition params {
-    ::GET::changeAcquisitionState $params daqstart
+proc ::GET::startAcquisition id {
+    ::GET::changeAcquisitionState $id daqcontrol start
 }
 ##
 # ::GET::stopAcquisition
 #    Stop acquisition in the GET hardware.
 #
 # @param params - the data source parameters.
-proc ::GET::stopAcquisition params {
-    ::GET::changeAcquisitionState  $params daqstop
+proc ::GET::stopAcquisition id {
+    ::GET::changeAcquisitionState $id daqcontrol stop
     after 500;                  # Let this run down.
 }
 ##
@@ -468,10 +582,9 @@ proc ::GET::stopAcquisition params {
 #    from the state dict.
 #
 proc ::GET::emitEndRun state {
-
-    
     set params [dict get $state parameterization]
     
+    set statefd [dict get $state statefd]
     set statehost [::GET::ringhost [dict get $params stateuri]]
     set statering [::GET::ringname [dict get $params stateuri]]
     set sourceid  [dict get $params datasourceid]
@@ -481,13 +594,12 @@ proc ::GET::emitEndRun state {
 
     set path [file join $::GET::getNsclDaqBindir insertstatechange]
     
-    puts "Emitting end run at: '$statehost' using '[list $path --ring-$statering]'"
-    
-    set outring  [dict get $params outputring]
-    ReadoutGUIPanel::Log $outring log [ssh::ssh $statehost [list $path --ring=$statering \
-       --run=$num --title=\"$title\" --source-id=$sourceid \
-							   --type=end --offset $duration]    ]
+    set command [join [list $path --ring=$statering --run=$num \
+                --title=\"$title\" --source-id=$sourceid --type=end\
+                --offset $duration]]
 
+    puts "Emitting end run at: '$statehost' using '[list $path --ring-$statering]'"
+    puts $statefd $command
 }
 ##
 # ::GET::ringhost
@@ -519,7 +631,7 @@ proc ::GET::ringname uri {
 }
 ##
 # ::GET::killProcess
-#     Kills a process.
+#     Kills a process. Close pipe and kill SSH session if none uses them.
 #
 # @param info - the dict that represents the state and parameterization of the
 #               data source.
@@ -529,34 +641,64 @@ proc ::GET::ringname uri {
 #               kill.
 # @param processname - If pidkey and/or pipekey are not defined, we'll use this
 #              to try to do a killall of processname (nuclear option - pun intended).
+# @param arrayid - array key to sharedInfo having list of pids of the processname 
+#                  started within this DAQ
+#              
 # @note - if pidkey and pipekey are defined, then they are unset from
 #         the info dict and that's used to update the source's dict.
 #         Note that the source id is [dict get $info parameterization sourceid]
-# @note - processes are started on an ssh pipe.  which  means much of what
-#         we wanted to do we can't acutally do.
 #
-proc ::GET::killProcess {info host pidkey pipekey processname} {
-    puts "Killing $processname"
-    if {[dict exists $info $pipekey]} {
-        # The pipe fd can be closed:
-        
-        close [dicte get $info $pipekey]
-        dict unset $info $pipekey
-        dict unset $info $pidkey;        # SSH pid.
-    }
+proc ::GET::killProcess {info host pidkey pipekey processname arrayid} {
     #  Figure out the PID of the remote process
-    
-    set pidList [::RemoteUtil::remotePid $host $processname]
-#    puts "Pid list: '$pidList'"
-    foreach pid $pidList {
-	puts "Killing $pid in $host ($processname)"
-        RemoteUtil::kill $host $pid
+    if {$processname ne "statepipe" && $processname ne "daqcontrolpipe"} {
+        puts "Killing $processname"
+        set pidList [::RemoteUtil::remotePid $host $processname]
+
+        foreach pid $pidList {
+            puts "Killing $pid in $host ($processname)"
+            RemoteUtil::kill $host $pid
+
+            set index [lsearch $::GET::sharedInfo($arrayid) $pid]
+            if {$index >= 0} {
+                set $::GET::sharedInfo($arrayid) \
+                [lreplace $::GET::sharedInfo($arrayid) $index $index]
+            }
+        }
+    }
+
+    if {[dict exists $info $pipekey]} {
+        set pipepid [dict get $info $pidkey]
+
+        # The pipe fd can be closed:
+        if {$processname eq "statepipe" || $processname eq "daqcontrolpipe"} {
+            set index [lsearch $::GET::sharedInfo($arrayid) $pipepid]
+
+            if {$index >= 0} {
+                set $::GET::sharedInfo($arrayid) \
+                    [lreplace $::GET::sharedInfo($arrayid) $index $index]
+            }
+        }
+
+        # Ignore error while killing
+        catch {
+            puts "Killing pipe process $pidkey ($pipepid) for $processname"
+            exec kill -9 $pipepid
+        }
+
+        # Ignore error while closing
+        catch {
+            puts "Closing pipe process $pidkey ($pipepid) for $processname"
+            close [dict get $info $pipekey]
+        }
+
+        dict unset $info $pidkey
+        dict unset $info $pipekey
     }
 }
 ##
 # ::GET::startEccServer
-#
-#     Starts the getEccServer program.
+#     Starts the getEccServer program. If multiple datasources share
+#     the same getEccServer host, starts only one, then shares the information.
 #
 # @param params - the parameters dict for the source.
 #                 We need:
@@ -570,28 +712,39 @@ proc ::GET::killProcess {info host pidkey pipekey processname} {
 #        ::GET::handleOuptut proc.
 # 
 proc ::GET::startEccServer params {
-    if {[array size ::GET::eccinfo] != 0} {
-        return [list $::GET::eccinfo(pid) $::GET::eccinfo(fd)]
+    set host [dict get $params eccip]
+    set port [dict get $params eccservice]
+
+    set sourceid [dict get $params sourceid]
+
+    foreach id [array names ::GET::activeProviders] {
+        if {$id ne $sourceid} {
+            set otherSource [::GET::getActiveSource $id]
+            set otherParams [dict get $otherSource parameterization]
+
+            if {[dict get $otherParams eccip] eq $host
+                && [dict get $otherParams eccservice] eq $port} {
+                    set pid [dict get $otherSource geteccserver]
+                    set fd [dict get $otherSource eccserveroutput]
+
+                    return [list $pid $fd]
+            }
+        }
     }
 
-    set host [dict get $params spdaq]
-    set port [dict get $params eccservice]
     set command [file join $::GET::getBinDir getEccServer]
     
     set info [ssh::sshpid $host [list $command -a :$port]]
     
     set pid [lindex $info 0]
     set fd  [lindex $info 1]
-    
-    set outring  [dict get $params outputring]
-    ::GET::setupOutputHandler getEccServer_$outring $fd
 
-    set ::GET::eccinfo(host) $host
-    set ::GET::eccinfo(port) $port
-    set ::GET::eccinfo(pid)  $pid
-    set ::GET::eccinfo(fd)   $fd
-    set ::GET::eccinfo(outring) $outring
-    
+    set serverIndex $::GET::sharedInfo(numGetEccServers)
+
+    ::GET::setupOutputHandler getEccServer_$serverIndex $fd
+
+    incr ::GET::sharedInfo(numGetEccServers)
+
     return [list $pid $fd]
 }
 ##
@@ -602,9 +755,8 @@ proc ::GET::startEccServer params {
 #
 # @param params - The dict that has the parameterization of the
 #                 data source.  We need the following items:
-#                 -  spdaq - host in which this is going to be run.
-#                 -  eccip the private subnet IP in which the ecc server is running.
-#                 -  eccservice - The service number on which eccServer accepts connections.
+
+#                 -  eccservice - The service number on which e  Server accepts connections.  
 #                 -  dataip - the Private subnet IP in which the router runs.
 #                 -  dataservice - The service number on which the router listens.
 #                 -  datauri - the URI of the ring in which the nsclrouter puts data
@@ -640,9 +792,61 @@ proc ::GET::startNsclRouter params {
 
     set outring  [dict get $params outputring]
     ::GET::setupOutputHandler $outring $fd
-    
+
     return [list $pid $fd]
 }
+
+proc ::GET::checkAndUpdatePid {host process arrayid} {
+    set remotePids [RemoteUtil::remotePid $host $process]
+    
+    set remotePids [::GET::removeDuplicates $remotePids $::GET::sharedInfo($arrayid)]
+
+    if {[llength $remotePids] > 0} {
+        lappend ::GET::sharedInfo($arrayid) $remotePids
+    }
+
+    foreach pid $remotePids {
+        set index [lsearch $::GET::checkingPids $pid]
+        if {$index < 0} {
+            ::GET::startPeriodicCheck $host $process $pid
+        }
+    }
+}
+
+##
+# ::GET::removeOwnedPids
+#    Remove PIDs matching with ones in sharedInfo(arrayid)
+#    which means matching processes in PIDs are started by this DAQ
+#
+# @param pids - list of PIDs whose PIDs will be removed if they're
+#               from this DAQ
+# @param arrayid - array key for the list in ::GET::sharedInfo
+#                  having PIDs for a process
+#
+proc ::GET::removeOwnedPids {pids arrayid} {
+    set pids [::GET::removeDuplicates $pids $::GET::sharedInfo($arrayid)]
+
+    return $pids
+}
+
+##
+# ::GET::removeDuplicates
+#    lista - listb. If no matching element exists in lista,
+#    lista is returned.
+#
+# @param lista - source list
+# @param listb - list having elements to be deleted from list a
+proc ::GET::removeDuplicates {lista listb} {
+    foreach elem $listb {
+        set index [lsearch $lista $elem]
+        if {$index >= 0} {
+            set lista [lreplace $lista $index $index]
+        }
+    }
+
+    return $lista
+}
+
 ##
 # ::GET::startRingMerge
 #
@@ -677,21 +881,69 @@ proc ::GET::startRingMerge params {
     
     return [list $pid $fd]
 }
+
 ##
-# ::GET::checkProcess
-#     @param command - name of the command to check.
-#     @param host    - Host in which the command is running.
+# ::GET::startlPipe
+#    Starts a SSH pipe for multiple command sending
 #
-#     @return bool - true if the process is found in the remote system.
+# @param       name - identifier for the pipe pid
+# @param     fdname - identifier for the pipe fd
+# @param     params - the parameterization dictionary of the data source.
+# @param comparator - parameter in params to compare for a unique pipe
+# @param        uri - 1 if URI is provided for comparator
 #
-proc ::GET::checkProcess {command host} {
-    set pids [::RemoteUtil::remotePid  $host $command]
-    set result [expr {[llength $pids] > 0}]
-    if {!$result} {
-	puts "Failed to find $command in $host: $pids : $result"
+proc ::GET::startPipe {name fdname params comparator uri} {
+    set sourceid [dict get $params sourceid]
+
+    set host [dict get $params $comparator]
+    if {$uri} {
+        set host [::GET::ringhost $host]
     }
-    return $result
+
+    foreach id [array names ::GET::activeProviders] {
+        if {$id ne $sourceid} {
+            set otherSource [::GET::getActiveSource $id]
+            set otherParams [dict get $otherSource parameterization]
+            set otherHost [dict get $otherParams $comparator]
+            if {$uri} {
+                set otherHost [::GET::ringhost $otherHost]
+            }
+
+            if {$host eq $otherHost} {
+                set pid [dict get $otherSource $name]
+                set fd [dict get $otherSource $fdname]
+
+                return [list $pid $fd]
+            }
+        }
+    }
+
+    set info [ssh::sshpid $host bash]
+
+    set pid [lindex $info 0]
+    set fd [lindex $info 1]
+
+    ::GET::setupOutputHandler "$name Log" $fd
+
+    return $info
 }
+
+##
+# ::GET::startDaqcontrolPipe
+#     @param params - the parameterization dictionary of the data source
+#
+proc ::GET::startDaqcontrolPipe params {
+    return [::GET::startPipe daqcontrol daqcontrolfd $params spdaq 0]
+}
+
+##
+# ::GET::startStatePipe
+#     @param params - the parameterization dictionary of the data source
+#
+proc ::GET::startStatePipe params {
+    return [::GET::startPipe state statefd $params stateuri 1]
+}
+
 ##
 # ::GET::makeRing
 #     Make a ring buffer in a remote host.
@@ -705,6 +957,7 @@ proc ::GET::makeRing {host name} {
 
     ssh::ssh $host $command;    # Errors caught in ssh::ssh.
 }
+
 ##
 # ::GET::setupOutputHandler
 #     Sets up an fd to  use ::GET::handleOutput whenever
@@ -713,9 +966,10 @@ proc ::GET::makeRing {host name} {
 #   @note that fd is set in non blocking mode.
 #    
 proc ::GET::setupOutputHandler {tabtitle fd} {
-    fconfigure $fd -blocking 0
+    fconfigure $fd -buffering line -blocking 0
     fileevent $fd readable [list ::GET::handleOutput $tabtitle $fd]
 }
+
 ##
 # ::GET::handleOutput
 #    - If the fd is at eof, unset the file event handler.  The fd will
@@ -729,7 +983,13 @@ proc ::GET::handleOutput {tabtitle fd} {
         fileevent $fd readable ""
     } else {
         set line [gets $fd]
-        ReadoutGUIPanel::Log $tabtitle log $line       
+        if {[string match -nocase "*error*" $line]} {
+            ReadoutGUIPanel::Log $tabtitle error $line
+        } elseif {[string match -nocase "*warning*" $line]} {
+            ReadoutGUIPanel::Log $tabtitle warning $line
+        } else {
+            ReadoutGUIPanel::Log $tabtitle log $line
+        }
     }
 }
 
@@ -748,40 +1008,208 @@ proc ::GET::handleOutput {tabtitle fd} {
 #    or else you won't get any data.  It must be unchecked when not doing
 #    pulser runs or else the results are not known.
 #
-#   -  GET::startPulser will reflect the state of the button and
-#   -  GET::pulserCheckButton will be the widget path to the checkbutton.
+#    Additionally, essential parts of GETController are adopted like
+#     - Selecting/modifying hardware description file
+#     - Selecting/modifying CoBo configuration file
+#     - Configuting CoBo using the information provided by those above
+#
+#    Widgets:
+#     - GET::startPulser will reflect the state of the button and
+#     - GET::pulserCheckButton will be the widget path to the checkbutton.
+#     - GET::hwdesc & GET::configuration
+#       two above have TextField, BrowserButton, and ModifyButton as postfix
+#       for displayiing selected file path, for selecting of file, and for
+#       executing configuration editor, respectively.
+#     - GET::startConfiguringButton executes GET::startConfiguring
+#       to configure CoBo(s) using provided configuration files.
 #
 
 proc GET::SetupGui {} {
     ttk::labelframe .getcontrols -text {GET controls}
     set ::GET::pulserCheckButton [ttk::checkbutton .getcontrols.pulser \
         -text {Start Pulser} -onvalue 1 -offvalue 0 -variable GET::startPulser \
+        -state disabled
     ]
-    grid $::GET::pulserCheckButton -sticky w
-    grid .getcontrols -sticky nsew
 
+    set ::cconfiged [file join $::GET::getBinDir cconfiged]
+
+    set ::GET::hwdescBrowserButton [ttk::button .getcontrols.hwdescBrowserButton \
+    -text "Select HWDesc" \
+    -command {GET::openFileBrowser "Select Hardware Description File" GET::hwdescFile}]
+    set ::GET::hwdescModifyButton [ttk::button .getcontrols.hwdescModifyMotton \
+    -text "Modify" \
+    -command {exec $cconfiged $GET::hwdescFile}]
+    set ::GET::hwdescTextField [ttk::entry .getcontrols.hwdescTextField \
+    -textvariable GET::hwdescFile -state readonly]
+
+    set ::GET::configurationBrowserButton [ttk::button \
+    .getcontrols.configurationBrowserButton -text "Select Configuration" \
+    -command {GET::openFileBrowser "Select Configuration File" GET::configurationFile}]
+    set ::GET::configurationModifyButton [ttk::button \
+    .getcontrols.configurationModifyMotton -text "Modify" \
+    -command {exec $cconfiged $GET::configurationFile}]
+    set ::GET::configurationTextField [ttk::entry \
+    .getcontrols.configurationTextField \
+    -textvariable GET::configurationFile -state readonly]
+
+    set ::GET::startConfiguringButton [ttk::button \
+    .getcontrols.startConfiguringButton -text "Configure CoBo(s)" \
+    -command {GET::startConfiguring} -state disabled]
+
+    set padx 1
+    set pady 1
+
+    grid columnconfigure .getcontrols 0 -weight 1
+
+    grid $::GET::pulserCheckButton -row 0 -column 0 -sticky w
+    grid $::GET::startConfiguringButton -row 0 -column 1 -padx $padx -pady $pady -columnspan 2 -sticky e
+
+    grid rowconfigure .getcontrols 1 -minsize 20
+
+    grid $::GET::hwdescTextField -row 2 -column 0 -padx $padx -sticky we
+    grid $::GET::hwdescBrowserButton -row 2 -column 1 -padx $padx -pady $pady -sticky we
+    grid $::GET::hwdescModifyButton -row 2 -column 2 -padx $padx -pady $pady -sticky we
+
+    grid $::GET::configurationTextField -row 3 -column 0 -padx $padx -sticky we
+    grid $::GET::configurationBrowserButton -row 3 -column 1 -padx $padx -pady $pady -sticky we
+    grid $::GET::configurationModifyButton -row 3 -column 2 -padx $padx -pady $pady -sticky we
+
+    grid .getcontrols -sticky nsew
 }
 
+##
+# GET::checkFileSelection
+#    Checks if user ends up with canceling the popup window, which returns
+#    an empty string instead of leaving the previous file selection unchanged.
+#    If an empty string is provided, leave the filename variable unchanged.
+#
+proc GET::checkFileSelection {filename returnValue} {
+    # User selected a file
+    if {$returnValue ne ""} {
+        return $returnValue
+    } 
+
+    # User cancellation
+    if {[info exists $filename]} {
+        return [set $filename]
+    }
+
+    # Default value is empty
+    return {}
+}
 
 ##
-#  Now we need a bundle to ghost/unghost the pulser button.
+# GET::openFileBrowser
+#    Wrapper for tk_getOpenFile with file type configuration
 #
+proc GET::openFileBrowser {title returnVariable} {
+    set ::filetypes {
+        {{XCFG Files} {.xcfg}}
+        {{All Files}  *      }
+    }
+
+    set $returnVariable [GET::checkFileSelection $returnVariable \
+                         [tk_getOpenFile -title $title -filetypes $::filetypes]]
+}
+
+##
+# GET::startConfiguring
+#   Configuring CoBo(s)
+#
+proc GET::startConfiguring {} {
+    if {![info exists GET::hwdescFile] || ![info exists GET::configurationFile]
+        || $GET::hwdescFile eq "" || $GET::configurationFile eq ""} {
+            tk_messageBox \
+                -icon error -title "File(s) needed" -type ok \
+                -message "hwdesc and/or configuration file(s) are not set or don't exist!"
+
+        return
+    }
+
+    set targetDict [dict create]
+    array set targetArgs [list]
+    foreach id [array names ::GET::activeProviders] {
+        set info [::GET::getActiveSource $id]
+        set params [dict get $info parameterization]
+
+        set pipe [dict get $info daqcontrolfd]
+
+        set ecchost [dict get $params eccip]
+        set eccsvc [dict get $params eccservice]
+        set eccArg $ecchost:$eccsvc
+
+        set coboip [dict get $params coboip]
+        set cobosvc [dict get $params coboservice]
+        set dataip [dict get $params dataip]
+        set datasvc [dict get $params dataservice]
+
+        set targetArg $coboip:$cobosvc-$dataip:$datasvc
+        if {![dict exists $targetDict $pipe]} {
+            dict set targetDict $pipe $eccArg $targetArg
+        } else {
+            if {[dict exists $targetDict $pipe $eccArg]} {
+                dict with targetDict $pipe {lappend $eccArg $targetArg}
+            } else {
+                dict set targetDict $pipe $eccArg $targetArg
+            }
+        }
+    }
+
+    set program [file join $::GET::getNsclDaqBindir configure]
+    foreach pipe [dict keys $targetDict] {
+        foreach eccArg [dict keys [dict get $targetDict $pipe]] {
+            set command [list $program -e $eccArg -h $GET::hwdescFile -c $GET::configurationFile]
+            foreach targetArg [dict get $targetDict $pipe $eccArg] {
+                lappend command [join [list -t $targetArg]]
+            }
+
+            puts $pipe [join $command]
+        }
+    }
+}
 
 proc ::GET::attach state {}
 
+##
+#  Now we need a bundle to enable/disable the widgets in GET group
+#
+
 proc ::GET::enter {from to} {
-    
-    if {[winfo exists $::GET::pulserCheckButton]} {
+    changeWidgetStateWhenEnter $from $to $::GET::pulserCheckButton
+    changeWidgetStateWhenEnter $from $to $::GET::startConfiguringButton
+    changeWidgetStateWhenEnter $from $to $::GET::hwdescBrowserButton
+    changeWidgetStateWhenEnter $from $to $::GET::hwdescModifyButton
+    changeWidgetStateWhenEnter $from $to $::GET::configurationBrowserButton
+    changeWidgetStateWhenEnter $from $to $::GET::configurationModifyButton
+
+    if {$from eq "Starting" && $to eq "Halted"} {
+        tk_messageBox \
+            -icon info -title "GET datasource" -type ok \
+            -message "Action Needed!" \
+            -detail "Remember to configure CoBo(s)!"
+    }
+}
+##
+# GET::changeWidgetStateWhenEnter
+#    If widget exists and run state changes to Active,
+#    change the widget state to disabled.
+#    All the other run states, widget is in enabled state.
+#
+# @param from - initial run state
+# @param to - target run state
+# @param widget - widget to change state
+#
+proc ::GET::changeWidgetStateWhenEnter {from to widget} {
+    if {[winfo exists $widget]} {
         if {$to eq "Active"} {
-            $::GET::pulserCheckButton configure -state disabled
+            $widget configure -state disabled
         } else {
-            $::GET::pulserCheckButton configure -state enabled
+            $widget configure -state enabled
         }
     }
 }
 
 proc ::GET::leave {from to} {}
-
 
 #  Need to export the namespace procs and methods.
 
