@@ -49,8 +49,9 @@ class CRingItemProcessor
 {
 private:
     CDataSink& m_sink;
+    int m_nasads;
 public:
-    CRingItemProcessor(CDataSink& sink);
+    CRingItemProcessor(CDataSink& sink, int numAsads);
     virtual void processScalerItem(CRingScalerItem& item);
     virtual void processStateChangeItem(CRingStateChangeItem& item);
     virtual void processTextItem(CRingTextItem& item);

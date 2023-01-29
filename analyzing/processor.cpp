@@ -75,8 +75,8 @@ void dumpHit(const NSCLGET::Hit& h)
  *
  *  @param sink - reference to the data sink.
  */
-CRingItemProcessor::CRingItemProcessor(CDataSink& sink) :
-    m_sink(sink)
+CRingItemProcessor::CRingItemProcessor(CDataSink& sink, int numAsads) :
+    m_sink(sink), m_nasads(numAsads)
 {}
 
 /**
@@ -115,8 +115,11 @@ CRingItemProcessor::processStateChangeItem(CRingStateChangeItem& item)
     std::cout << "Occured at: " << std::ctime(&tm)
         << " " << item.getElapsedTime() << " sec. into the run\n";
     m_sink.putItem(item);
-    item.setBodyHeader(item.getEventTimestamp(), item.getSourceId(), item.getBarrierType());
-    m_sink.putItem(item);    // Clone for the second ASAD's sid.
+
+    for (int numAsads = 1; numAsads < m_nasads; numAsads++) {
+        item.setBodyHeader(item.getEventTimestamp(), item.getSourceId() + numAsads, item.getBarrierType());
+        m_sink.putItem(item);    // Clone for the second ASAD's sid.
+    }
 }
 /**
  * processTextItem
@@ -164,7 +167,7 @@ CRingItemProcessor::processEvent(CPhysicsEventItem& item)
     int asad = hits[0].s_asad;
     size_t requiredSize = hits.size() * sizeof(NSCLGET::Hit) + 100;
     
-    CPhysicsEventItem hitItem(item.getEventTimestamp(), item.getSourceId(), item.getBarrierType(), requiredSize);
+    CPhysicsEventItem hitItem(item.getEventTimestamp(), item.getSourceId() + asad, item.getBarrierType(), requiredSize);
     uint8_t* p = static_cast<uint8_t*>(hitItem.getBodyCursor());
     uint32_t nhits = hits.size();
     memcpy(p, &nhits, sizeof(uint32_t));

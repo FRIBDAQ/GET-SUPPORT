@@ -81,6 +81,11 @@ usage(std::ostream& o, const char* msg)
     o << "  readrings inputuri outputuri\n";
     o << "      inputuri - the file: or tcp: URI that describes where data comes from\n";
     o << "      outputuri - The sink to which the hit ring items gets put\n";
+    o << "      numAsAds - Number of AsAds on a CoBo. If specified larger than 1,\n";
+    o << "                 StateChangeItems are produced for AsAds 1-3 and their sourceids\n";
+    o << "                 are assigned by adding AsAd number, e.g. original sourceid is 20, then\n";
+    o << "                 21, 22, and 23 are assigned with numAsAds=4.\n";
+
    std::exit(EXIT_FAILURE);
 }
 
@@ -101,9 +106,15 @@ main(int argc, char** argv)
 {
     // Make sure we have enough command line parameters.
     
-    if (argc != 3) {
+    if (argc < 3) {
         usage(std::cerr, "Not enough command line parameters");
     }
+
+    int numAsads = 1;
+    if (argc == 4) {
+        numAsads  = atoi(argv[4]);
+    }
+
     // Create the data source.   Data sources allow us to specify ring item
     // types that will be skipped.  They also allow us to specify types
     // that we may only want to sample (e.g. for online ring items).
@@ -131,7 +142,7 @@ main(int argc, char** argv)
     // automatically deleted when we exit the block in which it's created.
     
     CRingItem*  pItem;
-    CRingItemProcessor processor(*sink);
+    CRingItemProcessor processor(*sink, numAsads);
     
     while ((pItem = pDataSource->getItem() )) {
         std::unique_ptr<CRingItem> item(pItem);     // Ensures deletion.
