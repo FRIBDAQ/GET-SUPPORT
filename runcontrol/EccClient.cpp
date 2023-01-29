@@ -73,7 +73,7 @@ get::GetEccPrx EccClient::ecc()
 	if (!ecc_)
 	{
 		const std::string proxyString = sockAddr.iceProxyString(servantName);
-		LOG_INFO() << "Getting ECC proxy: " << proxyString;
+		std::cerr << "Getting ECC proxy: " << proxyString << std::endl;
 		Ice::CommunicatorPtr commmunicator = ::mdaq::utl::Server::ic();
 		try
 		{
@@ -81,15 +81,23 @@ get::GetEccPrx EccClient::ecc()
 		}
 		catch (const Ice::ConnectFailedException & e)
 		{
-			throw CmdException(std::string("Could not connect to ECC at '") + proxyString + "': " + e.what());
+			throw std::runtime_error(std::string("Could not connect to ECC at '") + proxyString + "': " + e.what());
 		}
 
 		if (!ecc_)
 		{
-			throw CmdException(std::string("Could not connect to ECC at '") + proxyString + "'!");
+			throw std::runtime_error(std::string("Could not connect to ECC at '") + proxyString + "'!");
 		}
 	}
 	return ecc_;
+}
+//__________________________________________________________________________________________________
+void EccClient::destroy()
+{
+  try {
+    ::mdaq::utl::Server::ic() -> destroy();
+  }
+  catch (const Ice::Exception &) {}
 }
 //__________________________________________________________________________________________________
 /**
@@ -116,19 +124,26 @@ void EccClient::connectNode(const std::string & targetAddress)
 }
 //__________________________________________________________________________________________________
 /**
+ * Remove all nodes for initializing
+ */
+void EccClient::removeAllNodes() {
+  ecc() -> removeAllNodes();
+}
+//__________________________________________________________________________________________________
+/**
  * Initializes hardware for node with given IP address according to configuration whose path is given.
  * @param targetAddress Target socket address.
  * @param hwPath Path of hardware configuration.
  */
-void EccClient::loadHwDescription(const std::string & targetAddress, const std::string & hwPath)
+void EccClient::loadHwDescription(const std::string & targetAddress, const std::string & hwPath, std::size_t& coboIdx)
 {
-	DEBUG_START() << "loadHwDescription(" << targetAddress << ", " << hwPath << ')';
+	DEBUG_START() << "loadHwDescription(" << targetAddress << ", " << hwPath << ", " << coboIdx << ')';
 
-	LOG_INFO() << "Connecting to node at " << targetAddress;
-	ecc()->removeAllNodes();
+	std::cerr << "Connecting to node at " << targetAddress << std::endl;
+//	ecc()->removeAllNodes();
 	connectNode(targetAddress);
 
-	LOG_INFO() << "Loading '" << QFileInfo(QString::fromStdString(hwPath)).fileName().toStdString() << '\'';
+	std::cerr << "Loading '" << QFileInfo(QString::fromStdString(hwPath)).fileName().toStdString() << '\'' << std::endl;
 	CCfg::Io::Document doc;
 	// Read hardware description
 	try
@@ -137,7 +152,7 @@ void EccClient::loadHwDescription(const std::string & targetAddress, const std::
 	}
 	catch (const CCfg::Io::Document::IoError & e)
 	{
-		throw mdaq::utl::CmdException(std::string("Error reading hardware description file.") + e.what());
+		throw std::runtime_error(std::string("Error reading hardware description file.") + e.what());
 	}
 
 	// Store description into an XML string
@@ -148,7 +163,7 @@ void EccClient::loadHwDescription(const std::string & targetAddress, const std::
 	buffer.readAll(hwDescr);
 
 	// Load hardware description
-	ecc()->describeNode("CoBo", "0", hwDescr);
+	ecc()->describeNode("CoBo", std::to_string(coboIdx), hwDescr);
 
 	DEBUG_END() << "loadHwDescription";
 }
@@ -165,11 +180,11 @@ void EccClient::daqConnect(const std::string & dataRouterAddress, const std::str
 		std::string objectName = std::string("daq-") + flowType;
 		ecc()->connect(objectName, dataRouterAddress);
 		std::cout << " Data sender successfully created.                  " << std::endl;
-		LOG_INFO() << "Data sender successfully created.";
+		std::cerr << "Data sender successfully created." << std::endl;
 	}
 	catch (const CmdException & e)
 	{
-		LOG_ERROR() << "Could not create data sender!";
+		std::cerr << "Could not create data sender!" << std::endl;
 		throw;
 	}
 	DEBUG_END() << "daqConnect";
@@ -177,7 +192,7 @@ void EccClient::daqConnect(const std::string & dataRouterAddress, const std::str
 //__________________________________________________________________________________________________
 void EccClient::daqDisconnect()
 {
-	LOG_DEBUG() << "Disconnecting from data router...";
+	std::cout << "Disconnecting from data router..." << std::endl;
 	ecc()->connect("daq-none", "");
 }
 //__________________________________________________________________________________________________
@@ -214,7 +229,7 @@ uint32_t EccClient::checkHardwareVersion()
 	{
 		oss << " not found";
 	}
-	LOG_INFO() << oss.str();
+	std::cerr << oss.str() << std::endl;
 	return hardwareVersion;
 }
 //__________________________________________________________________________________________________
@@ -242,7 +257,7 @@ uint32_t EccClient::checkFirmwareRelease()
 	{
 		oss << " not found";
 	}
-	LOG_INFO() << oss.str();
+	std::cerr << oss.str() << std::endl;
 	return firmwareRelease;
 }
 //__________________________________________________________________________________________________
@@ -267,11 +282,11 @@ void EccClient::setCoBoInitDone(bool done)
 	}
 	catch (const Ice::LocalException & e)
 	{
-		LOG_WARN() << "Could not set CoBo 'initDone' bit to " << done << " (" << e.ice_name() << ')';
+		std::cerr << "Could not set CoBo 'initDone' bit to " << done << " (" << e.ice_name() << ')' << std::endl;
 	}
 	catch (const mdaq::utl::CmdException & e)
 	{
-		LOG_WARN() << "Could not set CoBo 'initDone' bit to " << done << ". " << e.reason << ')';
+		std::cerr << "Could not set CoBo 'initDone' bit to " << done << ". " << e.reason << ')' << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -296,7 +311,7 @@ void EccClient::setCoBoMutantMode(bool enabled)
 	}
 	catch (const mdaq::utl::CmdException & e)
 	{
-		LOG_WARN() << e.what();
+		std::cerr << e.what() << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -306,7 +321,7 @@ void EccClient::setCoBoMutantMode(bool enabled)
  */
 void EccClient::pipeInit()
 {
-	LOG_INFO() << "Initializing CoBo firmware pipeline";
+	std::cerr << "Initializing CoBo firmware pipeline" << std::endl;
 	DEBUG_START() << "pipeInit";
 
 	ecc()->connect("device", "ctrl");
@@ -338,7 +353,7 @@ void EccClient::pipeInit()
  */
 void EccClient::triggerInit()
 {
-	LOG_INFO() << "Initializing trigger core";
+	std::cerr << "Initializing trigger core" << std::endl;
 	DEBUG_START() << "triggerInit";
 
 	ecc()->connect("device", "ctrl");
@@ -403,7 +418,7 @@ void EccClient::triggerInit()
  */
 void EccClient::circularBufferInit()
 {
-	LOG_INFO() << "Initializing circular buffers";
+	std::cerr << "Initializing circular buffers" << std::endl;
 	DEBUG_START() << "circularBufferInit";
 
 	ecc()->connect("device", "ctrl");
@@ -470,7 +485,7 @@ void EccClient::clearAllLeds()
 	}
 	catch (const Ice::OperationNotExistException & e)
 	{
-		LOG_WARN() << e.what();
+		std::cerr << e.what() << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -482,7 +497,7 @@ void EccClient::setLedState(const LedType & type, const size_t & asadId, const L
 	}
 	catch (const Ice::OperationNotExistException & e)
 	{
-		LOG_WARN() << e.what();
+		std::cerr << e.what() << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -491,7 +506,7 @@ void EccClient::setLedState(const LedType & type, const size_t & asadId, const L
  */
 void EccClient::asadPowerOff()
 {
-	LOG_INFO() << "Powering off AsAd board(s)";
+	std::cerr << "Powering off AsAd board(s)" << std::endl;
 	try
 	{
 		// Check monitoring status of active AsAd boards (it will no longer be possible after they are powered off).
@@ -504,9 +519,9 @@ void EccClient::asadPowerOff()
 			const uint16_t status = getAsAdAlertStatus();
 			if (0 != status)
 			{
-				LOG_WARN() << "AsAd board no. " << asadId << " is in auto-protection mode (status "
+        std::cerr << "AsAd board no. " << asadId << " is in auto-protection mode (status "
 				        << std::hex << std::showbase << status << std::dec << " e.g. "
-				        << get::asad::utl::stringifyMonitoringAlertStatus(status) << ')';
+				        << get::asad::utl::stringifyMonitoringAlertStatus(status) << ')' << std::endl;
 			}
 		}
 
@@ -525,7 +540,7 @@ void EccClient::asadPowerOff()
  */
 void EccClient::asadInit(int time_ms, const uint8_t & abortIfNoPowerSupply)
 {
-	LOG_INFO() << "Initializing AsAd boards";
+	std::cerr << "Initializing AsAd boards" << std::endl;
 
 	clearAllLeds();
 
@@ -550,9 +565,9 @@ void EccClient::asadInit(int time_ms, const uint8_t & abortIfNoPowerSupply)
 			const uint16_t alertStatus = getAsAdAlertStatus();
 			if (0 != alertStatus)
 			{
-				LOG_WARN() << "AsAd board no. " << asadIdx << " was in auto-protection mode (status "
+        std::cerr << "AsAd board no. " << asadIdx << " was in auto-protection mode (status "
 						<< std::hex << std::showbase << alertStatus << std::dec
-						<< " e.g. " << get::asad::utl::stringifyMonitoringAlertStatus(alertStatus) << ')';
+						<< " e.g. " << get::asad::utl::stringifyMonitoringAlertStatus(alertStatus) << ')' << std::endl;
 			}
 		}
 
@@ -567,7 +582,8 @@ void EccClient::asadInit(int time_ms, const uint8_t & abortIfNoPowerSupply)
 			if (not isAsAdConnected(asadIdx))
 			{
 				setLedState(get::cobo::LedB, asadIdx, get::cobo::LedSlowPulse);
-				throw CmdException(std::string("AsAd board no. ") + boost::lexical_cast< std::string >(asadIdx) + std::string(" is not connected to CoBo!"));
+        std::cerr << std::string("AsAd board no. ") + boost::lexical_cast< std::string >(asadIdx) + std::string(" is not connected to CoBo!") << std::endl;
+				throw std::runtime_error(std::string("AsAd board no. ") + boost::lexical_cast< std::string >(asadIdx) + std::string(" is not connected to CoBo!"));
 			}
 			// Check board is power supplied
 			if (not isAsAdPowerSupplied(asadIdx))
@@ -576,10 +592,11 @@ void EccClient::asadInit(int time_ms, const uint8_t & abortIfNoPowerSupply)
 				if (::utl::BitFieldHelper< uint8_t >::getBit(abortIfNoPowerSupply, asadIdx))
 				{
 					setLedState(get::cobo::LedB, asadIdx, get::cobo::LedSlowPulse);
-					throw CmdException(errorMsg);
+          std::cerr << errorMsg << std::endl;
+					throw std::runtime_error(errorMsg);
 				}
 				else
-					LOG_ERROR() << errorMsg;
+					std::cerr << errorMsg << std::endl;
 			}
 			// Power ON board
 			DBG_IF(verbose) << "Powering on AsAd board no. " << asadIdx;
@@ -595,7 +612,8 @@ void EccClient::asadInit(int time_ms, const uint8_t & abortIfNoPowerSupply)
 				msg << "AsAd board no. " << asadIdx << " was not successfully powered on"
 						" (PLG=" << (not plg) << ", AL=" << ", PWU=" << pwu << "!";
 				setLedState(get::cobo::LedB, asadIdx, get::cobo::LedSlowPulse);
-				throw mdaq::utl::CmdException(msg.str());
+                                std::cerr << msg.str() << std::endl;
+				throw std::runtime_error(msg.str());
 			}
 
 			// Switch 'P' LED on to indicate AsAd board is successfully connected and powered.
@@ -692,7 +710,7 @@ void EccClient::aget2pInitNow()
 void EccClient::setActiveAGetMask(const uint16_t mask)
 {
 	agetMask_ = mask;
-	LOG_INFO() << "Mask of active AGET chips: " << std::showbase << std::hex << agetMask_ << std::dec;
+	std::cerr << "Mask of active AGET chips: " << std::showbase << std::hex << agetMask_ << std::dec << std::endl;
 }
 //__________________________________________________________________________________________________
 /**
@@ -701,7 +719,7 @@ void EccClient::setActiveAGetMask(const uint16_t mask)
 void EccClient::setActiveAsAdMask(const uint16_t mask)
 {
 	asadMask_ = mask;
-	LOG_INFO() << "Mask of active AsAd boards: " << std::showbase << std::hex << asadMask_ << std::dec;
+	std::cerr << "Mask of active AsAd boards: " << std::showbase << std::hex << asadMask_ << std::dec << std::endl;
 }
 //__________________________________________________________________________________________________
 void EccClient::selectCalibChips(const uint8_t calibChipMask)
@@ -758,7 +776,7 @@ void EccClient::agetInit()
  */
 void EccClient::calibrateAutoReadDataDelay()
 {
-	LOG_INFO() << "Calibrating SCR data delays";
+	std::cerr << "Calibrating SCR data delays" << std::endl;
 	// Based on script dataCal.ecc
 	ecc()->connect("device", "ctrl");
 	ecc()->writeField("aget_sc_configuration", "SC_En", agetMask_);
@@ -803,7 +821,7 @@ void EccClient::calibrateAutoReadDataDelay()
  */
 void EccClient::asadSetAutoReadDataDelayEnabled(const size_t & asadId, bool enabled)
 {
-	LOG_INFO() << "Selecting " << (enabled?"automatic":"manual") << " data delays for AsAd no. " << asadId;
+	std::cerr << "Selecting " << (enabled?"automatic":"manual") << " data delays for AsAd no. " << asadId << std::endl;
 	ecc()->connect("device", "ctrl");
 	std::string fieldName = std::string("SCRAutoDelayEnable");
 	try
@@ -826,7 +844,7 @@ void EccClient::asadSetAutoReadDataDelayEnabled(const size_t & asadId, bool enab
  */
 void EccClient::asadSetAgetInputProtections()
 {
-	LOG_DEBUG() << "Setting AGET input protections";
+	std::cout << "Setting AGET input protections" << std::endl;
 
 	// Write to all AsAd boards simultaneously
 	setAsAdSlowControlMask(asadMask_);
@@ -861,7 +879,7 @@ void EccClient::asadConfigureAgetInputs(const uint8_t & adc0, const uint8_t & IM
  */
 void EccClient::asadAdcInit(ModeADC modeADC)
 {
-	LOG_INFO() << "Running AsAd ADC calibration sequence (" << (modeADC == DDR?"DDR":"SDR") << ')';
+	std::cerr << "Running AsAd ADC calibration sequence (" << (modeADC == DDR?"DDR":"SDR") << ')' << std::endl;
 	// Set mask for broadcast of AsAd slow control commands
 	setAsAdSlowControlMask(asadMask_);
 
@@ -902,8 +920,8 @@ void EccClient::setAsAdSlowControlMask(const uint16_t & mask)
 	}
 	catch (const CmdException & e)
 	{
-		LOG_WARN() << e.reason;
-		LOG_WARN() << "You need to update your hardware description file!";
+		std::cerr << e.reason << std::endl;
+		std::cerr << "You need to update your hardware description file!" << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -941,7 +959,7 @@ void EccClient::selectAsAdForSlowControl(const size_t & asadIdx)
  */
 void EccClient::asadCal()
 {
-	LOG_INFO() << "Calibrating AsAd slow control ...";
+	std::cerr << "Calibrating AsAd slow control ..." << std::endl;
 
 	setAsAdSlowControlMask(asadMask_);
 
@@ -972,7 +990,8 @@ void EccClient::asadCal()
 			std::ostringstream msg;
 			msg << "Calibration of slow control of AsAd no. " << asadIdx << " failed: expected 0x41, read "
 					<< std::hex << std::showbase << manufacturerID << '!';
-			throw mdaq::utl::CmdException(msg.str());
+                        std::cerr << msg.str() << std::endl;
+			throw std::runtime_error(msg.str());
 		}
 		// Read board identifier
 		else
@@ -985,20 +1004,21 @@ void EccClient::asadCal()
 			const uint32_t fullID = asadGetIdentifier();
 			uint16_t actualUserID = utl::BitFieldHelper< uint32_t >::getField(fullID, 24u, 8u);
 			uint32_t boardID = fullID & 0xFFFFFF;
-			LOG_DEBUG() << "AsAd board no. " << asadIdx << " has identifier " << std::hex << boardID << std::dec
-					<< " and user label #" << actualUserID;
+                        std::cout << "AsAd board no. " << asadIdx << " has identifier " << std::hex << boardID << std::dec
+                                  << " and user label #" << actualUserID << std::endl;
 
 			// Check user chosen bits
 			if (actualUserID != expectedUserID)
 			{
 				std::ostringstream msg;
 				msg << "Calibration of slow control of AsAd no. " << asadIdx << " failed: expected and actual user labels of AsAd no. " << asadIdx << " do not match!";
-				throw mdaq::utl::CmdException(msg.str());
+                                std::cerr << msg.str() << std::endl;
+				throw std::runtime_error(msg.str());
 			}
 		}
 	}
 	setAsAdSlowControlMask(asadMask_);
-	LOG_INFO() << " ... AsAd slow control calibration done";
+	std::cerr << " ... AsAd slow control calibration done" << std::endl;
 }
 //__________________________________________________________________________________________________
 /**
@@ -1020,7 +1040,7 @@ void EccClient::adcReset()
  */
 void EccClient::coboSetCalibrationAgetChips(const uint16_t & agetMask)
 {
-	LOG_INFO() << "Selecting calibration AGET chips (mask=" << std::hex << std::showbase << agetMask << std::dec << ')';
+	std::cerr << "Selecting calibration AGET chips (mask=" << std::hex << std::showbase << agetMask << std::dec << ')' << std::endl;
 	try
 	{
 		// Loop over AsAd boards
@@ -1049,19 +1069,19 @@ void EccClient::coboSetCalibrationAgetChips(const uint16_t & agetMask)
 			}
 			if (calibrationChipId > 0)
 			{
-				LOG_INFO() << "Selecting AGET chip no. " << asadIdx*4+calibrationChipId << " for AsAd board no. " << asadIdx << " serial control delay calibration";
+				std::cerr << "Selecting AGET chip no. " << asadIdx*4+calibrationChipId << " for AsAd board no. " << asadIdx << " serial control delay calibration" << std::endl;
 			}
 			// Set AGET chip for serial control delay calibration
 			ecc()->connect("device", "ctrl");
 			std::string fieldName = std::string("AsAd") + boost::lexical_cast< std::string >(asadIdx);
-			//LOG_DEBUG() << "Setting calibrationAget." << fieldName << " to " << calibrationChipId;
+			//std::cout << "Setting calibrationAget." << fieldName << " to " << calibrationChipId << std::endl;
 			ecc()->writeField("calibrationAget", fieldName, calibrationChipId);
 		}
 	}
 	catch (const CmdException & e)
 	{
 		// Case of old firmware/hardware description where the 'calibrationAget' register does not exist.
-		LOG_WARN() << e.what();
+		std::cerr << e.what() << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -1072,7 +1092,7 @@ void EccClient::coboSetCalibrationAgetChips(const uint16_t & agetMask)
  */
 void EccClient::agetCal()
 {
-	LOG_INFO() << "Calibrating AGET slow control";
+	std::cerr << "Calibrating AGET slow control" << std::endl;
 	DEBUG_START() << "agetCal";
 
 	// Create local mask for easier debugging
@@ -1157,7 +1177,7 @@ void EccClient::printAgetChipVersionNumbers(bool check)
 
 	if (check)
 	{
-		LOG_DEBUG() << "Checking AGET chip version numbers are valid...";
+		std::cout << "Checking AGET chip version numbers are valid..." << std::endl;
 	}
 
 	std::ostringstream msg;
@@ -1178,7 +1198,8 @@ void EccClient::printAgetChipVersionNumbers(bool check)
 					msg.str("");
 					msg << "Read unknown version '" << std::showbase << std::hex << agetVersion << std::dec << " for AGET chip no. " << agetId << " of AsAd board no. " << asadId;
 					msg << " It means calibration of AGET slow control failed!";
-					throw CmdException(msg.str());
+                                        std::cerr << msg.str() << std::endl;
+					throw std::runtime_error(msg.str());
 				}
 			}
 			else
@@ -1187,7 +1208,7 @@ void EccClient::printAgetChipVersionNumbers(bool check)
 			}
 		}
 	}
-	LOG_DEBUG() << msg.str();
+	std::cout << msg.str() << std::endl;
 }
 //__________________________________________________________________________________________________
 /**
@@ -1215,8 +1236,8 @@ void EccClient::adcCal(ModeADC modeADC)
 	}
 	catch (const CCfg::CConfig::NotFound & e)
 	{
-		LOG_WARN() << e.what();
-		LOG_WARN() << "You need to update your hardware description file!";
+		std::cerr << e.what() << std::endl;
+		std::cerr << "You need to update your hardware description file!" << std::endl;
 	}
 
 	ecc()->connect("device", "asad");
@@ -1320,7 +1341,7 @@ void EccClient::setTriggerMode(const std::string & trigger)
 	ecc()->writeField("triggerMask", "manual_2p", 0);
 	ecc()->writeField("triggerMask", "slowControl_2p", 0);
 
-	LOG_INFO() << "Selecting '" << trigger << "' primary trigger mode";
+	std::cerr << "Selecting '" << trigger << "' primary trigger mode" << std::endl;
 
 	/* the requested trigger mode is enabled */
 	if (trigger == "onRequest")
@@ -1391,11 +1412,11 @@ void EccClient::setSecondaryTriggerMode(const std::string & mode)
 	}
 	catch (const CmdException & e)
 	{
-		LOG_WARN() << "Error setting secondary trigger mode: " << e.reason;
+		std::cerr << "Error setting secondary trigger mode: " << e.reason << std::endl;
 		return;
 	}
 
-	LOG_INFO() << "Selecting '" << mode << "' secondary trigger mode";
+	std::cerr << "Selecting '" << mode << "' secondary trigger mode" << std::endl;
 
 	/* the requested trigger mode is enabled */
 	if (mode == "onRequest")
@@ -1426,7 +1447,7 @@ void EccClient::setSecondaryTriggerMode(const std::string & mode)
  */
 void EccClient::setScwMultDelay(const uint64_t & delay)
 {
-	LOG_INFO() << "Setting 'ScwMultDelay' to " << delay << " CKR clock cycle(s)";
+	std::cerr << "Setting 'ScwMultDelay' to " << delay << " CKR clock cycle(s)" << std::endl;
 	ecc()->connect("device", "ctrl");
 	ecc()->writeRegister("ScwMultDelay", delay);
 }
@@ -1437,7 +1458,7 @@ void EccClient::setScwMultDelay(const uint64_t & delay)
  */
 void EccClient::setScwScrDelay(const uint64_t & delay_10ns)
 {
-	LOG_INFO() << "Setting 'ScwScrDelay' to " << delay_10ns*10 << " ns";
+	std::cerr << "Setting 'ScwScrDelay' to " << delay_10ns*10 << " ns" << std::endl;
 	ecc()->connect("device", "ctrl");
 	ecc()->writeRegister("ScwScrDelay", delay_10ns);
 }
@@ -1448,7 +1469,7 @@ void EccClient::setScwScrDelay(const uint64_t & delay_10ns)
  */
 void EccClient::setFullReadOutMode(bool isAllChannelRead)
 {
-	LOG_INFO() << "Selecting " << (isAllChannelRead?"full":"partial") << " readout mode";
+	std::cerr << "Selecting " << (isAllChannelRead?"full":"partial") << " readout mode" << std::endl;
 	ecc()->connect("device", "ctrl");
 	if (isAllChannelRead)
 		ecc()->writeField("pipeCtrl", "partialReadOut", 0);
@@ -1458,7 +1479,7 @@ void EccClient::setFullReadOutMode(bool isAllChannelRead)
 //_________________________________________________________________________________________________
 void EccClient::setTriggerDelay_10ns(const uint32_t & triggerDelay_10ns)
 {
-	LOG_INFO() << "Setting CoBo trigger delay to " << triggerDelay_10ns << " x 10 ns";
+	std::cerr << "Setting CoBo trigger delay to " << triggerDelay_10ns << " x 10 ns" << std::endl;
 	ecc()->connect("device", "ctrl");
 	ecc()->writeRegister("triggerDelay", triggerDelay_10ns);
 }
@@ -1495,7 +1516,7 @@ void EccClient::setCoBoMultSubtractMode(bool subtractAverage, const uint8_t & su
 	ecc()->connect("device", "ctrl");
 	try
 	{
-		LOG_INFO() << "Setting multiplicity subtractAverage to " << subtractAverage << " and subtractDevs to " <<  (short) subtractDevs;
+		std::cerr << "Setting multiplicity subtractAverage to " << subtractAverage << " and subtractDevs to " <<  (short) subtractDevs << std::endl;
 		// When set, the average multiplicity value of the AGET is subtracted from the AGET output to shift the baseline down to 0.
 		ecc()->writeField("pipeCtrl", "MultSubtractAverage", subtractAverage?1:0);
 		// Twice the number of absolute deviations to subtract from multiplicity signal.  In testing, a value of 4 (2 deviations) worked well to prevent noise from causing triggers.
@@ -1503,7 +1524,7 @@ void EccClient::setCoBoMultSubtractMode(bool subtractAverage, const uint8_t & su
 	}
 	catch (const CmdException & e)
 	{
-		LOG_WARN() << "Error setting multiplicity subtraction mode: " << e.reason;
+		std::cerr << "Error setting multiplicity subtraction mode: " << e.reason << std::endl;
 		return;
 	}
 }
@@ -1516,12 +1537,12 @@ void EccClient::setCoBoSuppressMultiplicity(const uint8_t & suppressMultiplicity
 	ecc()->connect("device", "ctrl");
 	try
 	{
-		LOG_INFO() << "Setting 'suppressMultiplicity' field to " << std::hex << std::showbase << (unsigned short) suppressMultiplicity << std::noshowbase << std::dec;
+		std::cerr << "Setting 'suppressMultiplicity' field to " << std::hex << std::showbase << (unsigned short) suppressMultiplicity << std::noshowbase << std::dec << std::endl;
 		ecc()->writeField("pipeCtrl", "suppressMultiplicity", suppressMultiplicity);
 	}
 	catch (const CmdException & e)
 	{
-		LOG_WARN() << "Error setting suppressMultiplicity register field: " << e.reason;
+		std::cerr << "Error setting suppressMultiplicity register field: " << e.reason << std::endl;
 		return;
 	}
 }
@@ -1533,7 +1554,7 @@ void EccClient::enableMem2pMode(bool valid2pMode)
 {
 	ecc()->connect("device", "ctrl");
 	ecc()->writeField("pipeCtrl", "modeEnable_2p", valid2pMode);
-	LOG_INFO() << "Setting 'modeEnable_2p' to " << valid2pMode;
+	std::cerr << "Setting 'modeEnable_2p' to " << valid2pMode << std::endl;
 }
 //_________________________________________________________________________________________________
 /**
@@ -1545,7 +1566,7 @@ void EccClient::setDataSourceId(const uint8_t & dataSourceId)
 {
 	ecc()->connect("device", "ctrl");
 	ecc()->writeField("dataSource", "value", dataSourceId);
-	LOG_INFO() << "Setting frame data source ID to " << (short) dataSourceId;
+	std::cerr << "Setting frame data source ID to " << (short) dataSourceId << std::endl;
 }
 //_________________________________________________________________________________________________
 /**
@@ -1556,7 +1577,7 @@ void EccClient::setCoBoId(const uint8_t & coboId)
 {
 	ecc()->connect("device", "ctrl");
 	ecc()->writeField("COBO_index", "d", coboId);
-	LOG_INFO() << "Setting frame CoBo ID to " << (short) coboId;
+	std::cerr << "Setting frame CoBo ID to " << (short) coboId << std::endl;
 }
 //_________________________________________________________________________________________________
 /**
@@ -1579,13 +1600,13 @@ void EccClient::daqCtrl(bool status, bool resetTime)
 		// Reset timestamp and event counters
 		if (resetTime)
 		{
-			LOG_INFO() << "Resetting timestamp and event counters";
+			std::cerr << "Resetting timestamp and event counters" << std::endl;
 			ecc()->connect("device", "ctrl");
 			ecc()->writeRegister("resetTime", 0);
 		}
 
 		// Start data sender and interrupt monitor
-		LOG_INFO() << "daqStart";
+		std::cerr << "daqStart" << std::endl;
 		ecc()->daqStart();
 
 		// Switch to fast control
@@ -1593,7 +1614,7 @@ void EccClient::daqCtrl(bool status, bool resetTime)
 	}
 	else
 	{
-		LOG_INFO() << "daqStop";
+		std::cerr << "daqStop" << std::endl;
 		ecc()->stopAsAdPeriodicPulser();
 		ecc()->daqStop();
 	}
@@ -1601,13 +1622,13 @@ void EccClient::daqCtrl(bool status, bool resetTime)
 //_________________________________________________________________________________________________
 void EccClient::daqSetAlwaysFlushData(bool enable)
 {
-	LOG_INFO() << "Setting data sender 'always flush' policy to " << enable;
+	std::cerr << "Setting data sender 'always flush' policy to " << enable << std::endl;
 	ecc()->setAlwaysFlushData(enable);
 }
 //_________________________________________________________________________________________________
 void EccClient::daqSetCircularBuffersEnabled()
 {
-	LOG_INFO() << "Selecting circular buffers";
+	std::cerr << "Selecting circular buffers" << std::endl;
 	ecc()->setCircularBuffersEnabled(asadMask_);
 }
 //_________________________________________________________________________________________________
@@ -1631,7 +1652,7 @@ void EccClient::acqTestMode(bool enable)
  */
 void EccClient::setCoBoReadingClockFrequency(float ckr_MHz)
 {
-	LOG_INFO() << "Setting CKR clock frequency to " << ckr_MHz << " MHz";
+	std::cerr << "Setting CKR clock frequency to " << ckr_MHz << " MHz" << std::endl;
 	ecc()->connect("device", "ctrl");
 	if (ckr_MHz == 25.0)
 	{
@@ -1649,7 +1670,8 @@ void EccClient::setCoBoReadingClockFrequency(float ckr_MHz)
 	{
 		std::ostringstream msg;
 		msg << ckr_MHz << " MHz is not a valid CKR frequency. The CKR frequency must always be set to 25 MHz.";
-		throw CmdException(msg.str());
+                std::cerr << msg.str() << std::endl;
+		throw std::runtime_error(msg.str());
 	}
 }
 //__________________________________________________________________________________________________
@@ -1697,10 +1719,10 @@ void EccClient::setAsAdLcm2Register(uint64_t value_LCM2)
  */
 void EccClient::setWritingClockFrequency(float ckw_MHz, bool pllConfigEnabled, const get::cobo::PllRegisterMap & regs)
 {
-	LOG_INFO() << "Setting CKW clock frequency to " << ckw_MHz << " MHz";
+	std::cerr << "Setting CKW clock frequency to " << ckw_MHz << " MHz" << std::endl;
 	if (not pllConfigEnabled)
 	{
-		LOG_WARN() << "CoBo PLL device will not be configured!";
+		std::cerr << "CoBo PLL device will not be configured!" << std::endl;
 	}
 	ecc()->coboSetWritingClockFrequency(ckw_MHz, pllConfigEnabled, regs);
 }
@@ -1722,7 +1744,7 @@ void EccClient::setAsAdLcm1Register(const uint64_t & value)
  */
 void EccClient::setCoBoLemoMode(const size_t lemoIndex, const uint8_t & mode)
 {
-	//LOG_DEBUG() << "Setting LEMO no. " << lemoIndex << " to mode " << (uint16_t) mode;
+	//std::cout << "Setting LEMO no. " << lemoIndex << " to mode " << (uint16_t) mode << std::endl;
 	ecc()->connect("device", "ctrl");
 	const std::string fieldName = std::string("L") + boost::lexical_cast< std::string >(lemoIndex);
 	ecc()->writeField("lemoMux", fieldName, mode);
@@ -1796,11 +1818,11 @@ void EccClient::agetRegWSC(const std::size_t & asadIdx, const std::size_t & aget
 	}
 	catch (const CmdException & e)
 	{
-		LOG_ERROR() << "Could not set AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.reason;
+		std::cerr << "Could not set AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.reason << std::endl;
 	}
 	catch (const std::exception& e)
 	{
-		LOG_ERROR() << "Could not set AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.what();
+		std::cerr << "Could not set AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.what() << std::endl;
 	}
 }
 //_________________________________________________________________________________________________
@@ -1819,11 +1841,11 @@ void EccClient::agetRegWSC(const std::string & registerName, uint64_t value)
 	}
 	catch (const CmdException & e)
 	{
-		LOG_ERROR() << "Could not set AGET register '" << registerName << "': " << e.reason;
+		std::cerr << "Could not set AGET register '" << registerName << "': " << e.reason << std::endl;
 	}
 	catch (const std::exception& e)
 	{
-		LOG_ERROR() << "Could not set AGET no. register '" << registerName << "': " << e.what();
+		std::cerr << "Could not set AGET no. register '" << registerName << "': " << e.what() << std::endl;
 	}
 }
 //_________________________________________________________________________________________________
@@ -1849,11 +1871,11 @@ uint64_t EccClient::agetRegRSC(const std::size_t & asadIdx, const std::size_t & 
 	}
 	catch (const CmdException & e)
 	{
-		LOG_ERROR() << "Could not read AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.reason;
+		std::cerr << "Could not read AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.reason << std::endl;
 	}
 	catch (const std::exception& e)
 	{
-		LOG_ERROR() << "Could not read AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.what();
+		std::cerr << "Could not read AGET no. " << asadIdx*4+agetIdx << " register '" << registerName << "': " << e.what() << std::endl;
 	}
 	return regValue;
 }
@@ -1872,7 +1894,7 @@ void EccClient::setReadIfHitMask(const std::size_t & asadIdx, const std::size_t 
 	// Select AGET chip
 	ecc()->writeRegister("maskSelect", long(asadIdx*4+agetIdx));
 	// Write register values
-	LOG_INFO() << "Setting 'readIfHitMask' registers for AGET " << asadIdx*4+agetIdx << " to " << std::showbase << std::hex << val1_4 << ", " << val5_36 << ", " << val37_68 << std::dec;
+	std::cerr << "Setting 'readIfHitMask' registers for AGET " << asadIdx*4+agetIdx << " to " << std::showbase << std::hex << val1_4 << ", " << val5_36 << ", " << val37_68 << std::dec << std::endl;
 	ecc()->writeRegister("readIfHitMask1_4", val1_4);
 	ecc()->writeRegister("readIfHitMask5_36", val5_36);
 	ecc()->writeRegister("readIfHitMask37_68", val37_68);
@@ -1892,7 +1914,7 @@ void EccClient::setReadAlwaysMask(const std::size_t & asadIdx, const std::size_t
 	// Select AGET chip
 	ecc()->writeRegister("maskSelect", asadIdx*4+agetIdx);
 	// Write register values
-	LOG_INFO() << "Setting 'readAlwaysMask' registers for AGET " << asadIdx*4+agetIdx << " to " << std::showbase << std::hex << val1_4 << ", " << val5_36 << ", " << val37_68 << std::dec;
+	std::cerr << "Setting 'readAlwaysMask' registers for AGET " << asadIdx*4+agetIdx << " to " << std::showbase << std::hex << val1_4 << ", " << val5_36 << ", " << val37_68 << std::dec << std::endl;
 	ecc()->writeRegister("readAlwaysMask1_4", val1_4);
 	ecc()->writeRegister("readAlwaysMask5_36", val5_36);
 	ecc()->writeRegister("readAlwaysMask37_68", val37_68);
@@ -1978,33 +2000,33 @@ void EccClient::injectCharge(long deltaV_mV)
 {
 	try
 	{
-		LOG_INFO() << "injectCharge(" << std::dec << deltaV_mV << " mV)";
+		std::cerr << "injectCharge(" << std::dec << deltaV_mV << " mV)" << std::endl;
 		ecc()->triggerAsAdPulser(deltaV_mV);
 	}
 	catch (const CmdException & e)
 	{
-		LOG_ERROR() << e.what() << ": " << e.reason;
+		std::cerr << e.what() << ": " << e.reason << std::endl;
 	}
 	catch (const Ice::ConnectionRefusedException&)
 	{
-		LOG_ERROR() << "Connection refused -> Is ECC server down? Try restarting ECC server";
+		std::cerr << "Connection refused -> Is ECC server down? Try restarting ECC server" << std::endl;
 	}
 	catch (const std::exception& e)
 	{
-		LOG_ERROR() << e.what();
+		std::cerr << e.what() << std::endl;
 
 	}
 	catch (const std::string& msg)
 	{
-		LOG_ERROR() << msg;
+		std::cerr << msg << std::endl;
 	}
 	catch (const char* msg)
 	{
-		LOG_ERROR() << msg;
+		std::cerr << msg << std::endl;
 	}
 	catch (...)
 	{
-		LOG_ERROR() << "Unknown error";
+		std::cerr << "Unknown error" << std::endl;
 	}
 }
 //_________________________________________________________________________________________________
@@ -2086,7 +2108,7 @@ void EccClient::setCoBoReadOffset(const uint16_t & offset)
 	}
 	catch (const CmdException & e)
 	{
-		LOG_WARN() << e.what(); // This register was only described on Nov 25th, 2013
+		std::cerr << e.what() << std::endl; // This register was only described on Nov 25th, 2013
 	}
 }
 //__________________________________________________________________________________________________
@@ -2105,7 +2127,7 @@ void EccClient::setCoBoZeroSuppressionMode(const bool & enabled, const bool & in
 	}
 	catch (const CmdException & e)
 	{
-		LOG_WARN() << e.what(); // This bit was described after email from N. U. on May 20th, 2014.
+		std::cerr << e.what() << std::endl; // This bit was described after email from N. U. on May 20th, 2014.
 	}
 }
 //__________________________________________________________________________________________________
@@ -2176,7 +2198,7 @@ void EccClient::asadConfigureTcmDevice(const bool & TC, const bool & RNG, const 
 	}
 	catch (const ::Ice::OperationNotExistException & e) // This operation was added later on
 	{
-		LOG_WARN() << e.what();
+		std::cerr << e.what() << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -2199,7 +2221,7 @@ void EccClient::asadMonitoringReset()
 void EccClient::asadDisableAutoProtection(const size_t & asadIdx)
 {
 	const uint8_t interruptMask1 = 0xFF;
-	LOG_DEBUG() << "Setting AsAd no. " << asadIdx << " auto-protection level to " << std::hex << std::showbase << (uint16_t) interruptMask1 << std::dec;
+	std::cout << "Setting AsAd no. " << asadIdx << " auto-protection level to " << std::hex << std::showbase << (uint16_t) interruptMask1 << std::dec << std::endl;
 	ecc()->connect("device", "asad");
 	ecc()->writeRegister("interruptMask1", interruptMask1);
 }
@@ -2304,7 +2326,7 @@ uint8_t EccClient::readVdd(const std::size_t & asadIdx)
 	}
 	catch (...)
 	{
-		LOG_ERROR() << "Error reading VDD (AsAd #" << asadIdx << ") register";
+		std::cerr << "Error reading VDD (AsAd #" << asadIdx << ") register" << std::endl;
 	}
 	return 0;
 }
@@ -2327,11 +2349,11 @@ uint8_t EccClient::readIdd(const std::size_t & asadIdx)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << e.reason;
+		std::cerr << e.reason << std::endl;
 	}
 	catch (...)
 	{
-		LOG_ERROR() << "Error reading IDD (Asad) register";
+		std::cerr << "Error reading IDD (Asad) register" << std::endl;
 	}
 	return 0;
 }
@@ -2354,11 +2376,11 @@ uint8_t EccClient::readVdd1(const std::size_t & asadIdx)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << e.reason;
+		std::cerr << e.reason << std::endl;
 	}
 	catch (...)
 	{
-		LOG_ERROR() << "Error reading VDD1 (AsAd #" << asadIdx << ") register";
+		std::cerr << "Error reading VDD1 (AsAd #" << asadIdx << ") register" << std::endl;
 	}
 	return 0;
 }
@@ -2381,11 +2403,11 @@ int8_t EccClient::readIntTemp(const std::size_t & asadIdx)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << e.reason;
+		std::cerr << e.reason << std::endl;
 	}
 	catch (...)
 	{
-		LOG_ERROR() << "Error reading Internal Temperature (AsAd #" << asadIdx << ") register";
+		std::cerr << "Error reading Internal Temperature (AsAd #" << asadIdx << ") register" << std::endl;
 	}
 	return 0;
 }
@@ -2408,11 +2430,11 @@ int8_t EccClient::readExtTemp(const std::size_t & asadIdx)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << e.reason;
+		std::cerr << e.reason << std::endl;
 	}
 	catch (...)
 	{
-		LOG_ERROR() << "Error reading External Temperature (AsAd #" << asadIdx << ") register";
+		std::cerr << "Error reading External Temperature (AsAd #" << asadIdx << ") register" << std::endl;
 	}
 	return 0;
 }
@@ -2449,7 +2471,7 @@ void EccClient::wVddLimit(uint8_t low, uint8_t high)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << "Error loading VDD limits (AsAd) registers: " << e.reason;
+		std::cerr << "Error loading VDD limits (AsAd) registers: " << e.reason << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -2463,8 +2485,8 @@ void EccClient::wIddLimit(uint8_t low, uint8_t high)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << "Error loading IDD limits (AsAd) registers: ";
-		LOG_ERROR() << e.reason;
+		std::cerr << "Error loading IDD limits (AsAd) registers: " << std::endl;
+		std::cerr << e.reason << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -2478,8 +2500,8 @@ void EccClient::wVdd1Limit(uint8_t low, uint8_t high)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << "Error loading VDD1 limits (AsAd) registers: ";
-		LOG_ERROR() << e.reason;
+		std::cerr << "Error loading VDD1 limits (AsAd) registers: " << std::endl;
+		std::cerr << e.reason << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -2493,8 +2515,8 @@ void EccClient::wIntTempLimit(uint8_t low, uint8_t high)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << "Error loading internal temperature limits (AsAd) registers: ";
-		LOG_ERROR() << e.reason;
+		std::cerr << "Error loading internal temperature limits (AsAd) registers: " << std::endl;
+		std::cerr << e.reason << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
@@ -2508,8 +2530,8 @@ void EccClient::wExtTempLimit(uint8_t low, uint8_t high)
 	}
 	catch (CmdException & e)
 	{
-		LOG_ERROR() << "Error loading external temperature limits (AsAd) registers: ";
-		LOG_ERROR() << e.reason;
+		std::cerr << "Error loading external temperature limits (AsAd) registers: " << std::endl;
+		std::cerr << e.reason << std::endl;
 	}
 }
 //__________________________________________________________________________________________________
