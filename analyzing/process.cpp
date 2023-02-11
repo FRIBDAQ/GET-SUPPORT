@@ -112,7 +112,7 @@ main(int argc, char** argv)
 
     int numAsads = 1;
     if (argc == 4) {
-        numAsads  = atoi(argv[4]);
+        numAsads = atoi(argv[3]);
     }
 
     // Create the data source.   Data sources allow us to specify ring item

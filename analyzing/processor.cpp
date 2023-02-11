@@ -116,8 +116,8 @@ CRingItemProcessor::processStateChangeItem(CRingStateChangeItem& item)
         << " " << item.getElapsedTime() << " sec. into the run\n";
     m_sink.putItem(item);
 
-    for (int numAsads = 1; numAsads < m_nasads; numAsads++) {
-        item.setBodyHeader(item.getEventTimestamp(), item.getSourceId() + numAsads, item.getBarrierType());
+    for (int iAsad = 1; iAsad < m_nasads; iAsad++) {
+        item.setBodyHeader(item.getEventTimestamp(), item.getSourceId() + iAsad, item.getBarrierType());
         m_sink.putItem(item);    // Clone for the second ASAD's sid.
     }
 }
