@@ -1119,7 +1119,280 @@ ring2graw tcp://spdaq08/get >data.graw
    </refentry>
    <refentry>
     <refmeta>
-        <refentrytitle>GET Run control</refentrytitle>
+        <refentrytitle>configure</refentrytitle>
+        <manvolnum>1nsclget</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>configure</refname>
+        <refpurpose>Configuring CoBos using hardware description and configuration files</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+          <command>configure</command> <arg>-e <replaceable>ECCSERVER:PORT</replaceable></arg> <arg>-h <replaceable>/PATH/TO/HWDESC/FILE</replaceable></arg> <arg>-c <replaceable>/PATH/TO/CONFIG/FILE</replaceable></arg> <arg>-t <replaceable>TARGETIP:PORT-NSCLDATAROUTERIP:PORT ?TARGETIP2:PORT2-NSCLDATAROUTER2:PORT2? ...</replaceable></arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+    <refsect1>
+        <title>OPTIONS</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>--help</option></term>
+                <listitem>
+                    <para>
+                        Outputs program help text and exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-V</option>, <option>--version</option></term>
+                <listitem>
+                    <para>
+                        Outputs the program version and exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-e</option>, <option>--ecc</option> <replaceable>ECCSERVERIP:PORT</replaceable></term>
+                <listitem>
+                    <para>
+                        ECC server IP address and its port in the format of 'ECCSERVERIP:PORT'.
+                    </para>
+                    <para>
+                        By default, the value is '127.0.0.1:46002' if not specified any.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-h</option>, <option>--hwdesc</option> <replaceable>/PATH/TO/HWDESC/FILE</replaceable></term>
+                <listitem>
+                    <para>
+                        Provide hardware description file for CoBo (and MuTanT)
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-e</option>, <option>--ecc</option> <replaceable>/PATH/TO/HWDESC/FILE</replaceable></term>
+                <listitem>
+                    <para>
+                        Provide hardware description file
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-c</option>, <option>--cond</option> <replaceable>/PATH/TO/CONFIG/FILE</replaceable></term>
+                <listitem>
+                    <para>
+                        Provide configuration condition file for CoBo (and MuTanT).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-t</option>, <option>--targets</option> <replaceable>TARGETIP:PORT-NSCLDATAROUTERIP:PORT ?TARGETIP2:PORT2-NSCLDATAROUTER2:PORT2? ...</replaceable></term>
+                <listitem>
+                    <para>
+                        Dash-separated target and nscldatarouter information. For example,
+                        target IP address is 1.2.3.4 with port 1234 and corresponding
+                        nscldatarouter IP address is 5.6.7.8 with port 5678, the pair is
+                        1.2.3.4:1234-5.6.7.8:5678. In case of many targets, provide the pairs
+                        with a space separation.
+                    </para>
+                    <para>
+                        Note that one target needs one dedicated nscldatarouter.
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            This program is written to exclude GETController application
+            in the process of DAQ setting up and support multiple CoBo DAQ.
+        </para>
+        <para>
+            Since the GETController assumes that only one CoBo exists in the DAQ
+            and written only for testing purposes, this program extended GETController
+            for multiple CoBo, possibly replacing the needs of NARVAL or such software.
+        </para>
+    </refsect1>
+   </refentry>
+   <refentry>
+    <refmeta>
+        <refentrytitle>GET Run control (new way)</refentrytitle>
+        <manvolnum>1nsclget</manvolnum>
+    </refmeta>
+    <refnamediv>
+        <refname>daqcontrol</refname>
+        <refpurpose>Start and stop GET data taking with pulser control</refpurpose>
+    </refnamediv>
+    <refsynopsisdiv>
+        <cmdsynopsis>
+          <command>daqcontrol</command>  <arg>-c <replaceable>start | stop</replaceable></arg> <arg>-t <replaceable>TARGETIP:PORT</replaceable></arg> <arg rep='repeat' choice='plain'><replaceable>?-t TARGETIP2:PORT2?</replaceable></arg> <arg>-e <replaceable>ECCSERVER:PORT</replaceable></arg> <arg choice='plain'><replaceable>?-p on | off?</replaceable></arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+    <refsect1>
+        <title>OPTIONS</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>-h</option>, <option>--help</option></term>
+                <listitem>
+                    <para>
+                        Outputs program help text and exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-V</option>, <option>--version</option></term>
+                <listitem>
+                    <para>
+                        Outputs the program version and exits.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-c</option>, <option>--command</option> <replaceable>start | stop</replaceable></term>
+                <listitem>
+                    <para>
+                        Start or stop the target(s) specified by <option>-t</option> option.
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-t</option>, <option>--targets</option> <replaceable>TARGETIP:PORT</replaceable></term>
+                <listitem>
+                    <para>
+                        CoBo Target IP address and port to execute the command given. Multiple CoBos can be specified by adding multiple <option>-t</option>
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-t</option>, <option>--ecc</option> <replaceable>ECCSERVERIP:PORT</replaceable></term>
+                <listitem>
+                    <para>
+                        ECC server IP and its port to transmit command to target(s).
+                    </para>
+                </listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-p</option>, <option>--pulser</option> <replaceable>on | off</replaceable></term>
+                <listitem>
+                    <para>
+                        Default option is off. By setting it on with start command, the internal pulser configured in the configuration file is activated and starts to emit pulses.
+                    </para>
+                    <para>
+                        With stop command, this option is set off always.
+                    </para>
+                </listitem>
+            </varlistentry>
+          </variablelist>
+    </refsect1>
+    <refsect1>
+        <title>DESCRIPTION</title>
+        <para>
+            This program is written to replace existing <command>daqstart</command>
+            and <command>daqstop</command>. Additional features on this program is
+            supporting start and stop commands and multiple CoBos in a single binary.
+        </para>
+        <para>
+            Description below is copied from the old documentation.
+            <link linkend='ch.components.getruncontrol.old' endterm='ch.components.getruncontrol.old' />
+        </para>
+        <para>
+          &nbsp;
+        </para>
+        <para>
+            These programs initiate (<command>daqstart</command>) and
+            terminate (<command>daqstop</command>) data taking in a CoBo.
+            The assumption they make is that some outside agency, such as
+            <command>GetController</command> has prepared the CoBo for
+            data taking with the desired configuration.
+        </para>
+        <para>
+            <parameter>hwnode</parameter> describes the service on which
+            the desired CoBo is accepting connections.  This is given in
+            <replaceable>ip-address:service-number</replaceable> format
+            where <parameter>ip-address</parameter> is the dotted
+            IP address of the CoBo and <parameter>service-number</parameter>
+            is normally <literal>46001</literal>.
+        </para>
+        <para>
+            <parameter>eccserver</parameter> describes the service on which the
+            GET eccserver is accepting connections.  This should be given in
+            <replaceable>ip-address:service-number</replaceable> where
+            the <parameter>ip-address</parameter> is the address of the host
+            system (spdaq) on the 10Gbit private subnet that connects the
+            host to the microTCA crate.  The <parameter>service-number</parameter>
+            is normally <literal>46002</literal>.
+        </para>
+        <para>
+            You can determine the proper IP addresses for a CoBo by examining
+            the <filename>/etc/dhcp/dhcpd.conf</filename> which determines which
+            physical ethernet addresses are given which IP addresses.  You can
+            determine the proper IP address for the Ecc Server by issuing the
+            command
+        </para>
+        <informalexample>
+            <programlisting>
+/sbin/ifconfig -a
+            </programlisting>
+        </informalexample>
+        <para>
+            And examining the IP address of the last ehternet interface.
+            For example; in spdaq08, the command above will give the following
+            output:
+        </para>
+        <informalexample>
+            <programlisting>
+eth4      Link encap:Ethernet  HWaddr 90:e2:ba:86:7e:bc
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+
+eth5      Link encap:Ethernet  HWaddr 90:e2:ba:86:7e:bd
+          inet addr:<emphasis>10.50.200.2</emphasis>  Bcast:10.50.255.255  Mask:255.255.0.0
+          inet6 addr: fe80::92e2:baff:fe86:7ebd/64 Scope:Link
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:1422015 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:282885 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:563624233 (537.5 MiB)  TX bytes:65826892 (62.7 MiB)
+
+lo        Link encap:Local Loopback
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:7224717 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:7224717 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0
+          RX bytes:119555197682 (111.3 GiB)  TX bytes:119555197682 (111.3 GiB)
+
+            </programlisting>
+        </informalexample>
+        <para>
+            See the <emphasis>emphasized</emphasis> part of the
+            <literal>eth5</literal> output.  The IP address is
+            <literal>10.50.200.2</literal>.
+        </para>
+        <para>
+            The final, optional, parameter for <command>daqstart</command>
+            controls whether or not the internal pulser is started.  For pulser
+            tests, this must be <literal>1</literal> (the default).
+            For ordinary data taking (e.g. with external triggers), this should
+            be <literal>0</literal>.  This is required because
+            <command>GetController</command> e.g. does not turn on the test pulser
+            until its <guibutton>Start</guibutton> button is clicked.
+        </para>
+        <para>
+            Note that <command>daqstop</command> unconditionally turns off the
+            test pulser so that if the next run does not explicitly turn it back
+            on, the pulser will remain off.
+        </para>
+    </refsect1>
+   </refentry>
+   <refentry>
+    <refmeta>
+        <refentrytitle id='ch.components.getruncontrol.old'>GET Run control (old way)</refentrytitle>
         <manvolnum>1nsclget</manvolnum>
     </refmeta>
     <refnamediv>
@@ -1130,9 +1403,6 @@ ring2graw tcp://spdaq08/get >data.graw
     <refsynopsisdiv>
         <cmdsynopsis>
 <command>daqstart  <replaceable>hwnode</replaceable> <replaceable>eccserver</replaceable> <optional>1|0</optional></command>
-        </cmdsynopsis>
-        <cmdsynopsis>
-<command>daqstop</command>   <arg>hwnode</arg> <arg>eccserver</arg>
         </cmdsynopsis>
     </refsynopsisdiv>
     <refsect1>
@@ -1227,7 +1497,6 @@ lo        Link encap:Local Loopback
             on, the pulser will remain off.
         </para>
     </refsect1>
-   
    </refentry>
    <refentry>
     <refmeta>
