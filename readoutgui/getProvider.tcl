@@ -153,6 +153,14 @@ proc ::GET::start params {
     
     set ::GET::activeProviders($id) [dict create parameterization $params]
 
+    #  runStatus dictionary key for global run status control
+
+    dict append ::GET::activeProviders($id) runStatus 0
+
+    #  For checking if all begin item are emitted
+
+    dict append ::GET::activeProviders($id) beginEmitted 0
+
     #  Create the ringbuffers:
     
     ::GET::createRingBuffers $id
@@ -363,7 +371,7 @@ proc ::GET::killPersistentProcesses id {
     # Now do the kills.
     
     ::GET::killProcess $info $gethost geteccserver eccserveroutput \
-                                        getEccServer getpids
+                                        getEccSoapServer getpids
     ::GET::killProcess $info $routerhost nsclrouter routeroutput \
                                         nscldatarouter routerpids
     ::GET::killProcess $info $thishost ringmerge  mergeout \
@@ -519,9 +527,11 @@ proc ::GET::emitBegin {id num title} {
     puts $statefd $command
     
     # If that worked we can update the sources dict:
-    
+
+    dict set info beginEmitted 1
+
     set ::GET::activeProviders($id) $info
-    
+
     #  Let the begin run record percolate through the system.
     
     after 500
@@ -546,9 +556,10 @@ proc ::GET::changeAcquisitionState {id program control} {
     set cobosvc [dict get $params coboservice]
     set coboArgs $coboip:$cobosvc
 
-    set program [file join $::GET::getNsclDaqBindir $program]
-    set command [list $program -c $control -t $coboArgs -e $eccArgs \
-                        -p [expr {$::GET::startPulser ? "on" : "off"}]]
+    set program [file join $::GET::getBinDir $program]
+    set command [list $program $control]
+#    set command [list $program -c $control -t $coboArgs -e $eccArgs \
+#                        -p [expr {$::GET::startPulser ? "on" : "off"}]]
 
     puts $daqcontrolfd $command
 }
@@ -563,7 +574,53 @@ proc ::GET::changeAcquisitionState {id program control} {
 #                 eccservice
 #                 
 proc ::GET::startAcquisition id {
-    ::GET::changeAcquisitionState $id daqcontrol start
+    set readyToStart 1
+    set alreadyStarted 0
+
+    foreach otherid [array names ::GET::activeProviders] {
+        if {$id ne $otherid} {
+            set otherSource [::GET::getActiveSource $otherid]
+
+	    if {[dict get $otherSource beginEmitted] eq 0} {
+                set readyToStart 0
+	    }
+        }
+    }
+
+
+    set source [::GET::getActiveSource $id]
+    if {[dict get $source beginEmitted] eq 1 && $readyToStart eq 1} {
+        foreach otherid [array names ::GET::activeProviders] {
+            if {$id ne $otherid} {
+                set otherSource [::GET::getActiveSource $otherid]
+
+                if {[dict get $otherSource runStatus] eq 0} {
+                    dict set otherSource runStatus 1
+                    set ::GET::activeProviders($otherid) $otherSource
+                } else {
+                    set alreadyStarted 1
+                }
+            }
+        }
+    }
+
+
+    if {$alreadyStarted eq 0 && $readyToStart eq 1} {
+        ::GET::changeAcquisitionState $id getEccSoapClient start
+
+        dict set source runStatus 1
+        dict set source beginEmitted 0
+        set ::GET::activeProviders($id) $source
+
+        foreach otherid [array names ::GET::activeProviders] {
+            if {$id ne $otherid} {
+                set otherSource [::GET::getActiveSource $otherid]
+
+                dict set otherSource beginEmitted 0
+                set ::GET::activeProviders($otherid) $otherSource
+            }
+        }
+    }
 }
 ##
 # ::GET::stopAcquisition
@@ -571,8 +628,31 @@ proc ::GET::startAcquisition id {
 #
 # @param params - the data source parameters.
 proc ::GET::stopAcquisition id {
-    ::GET::changeAcquisitionState $id daqcontrol stop
-    after 500;                  # Let this run down.
+    set alreadyStopped 0
+
+    foreach otherid [array names ::GET::activeProviders] {
+        if {$id ne $otherid} {
+            set otherSource [::GET::getActiveSource $otherid]
+
+            if {[dict get $otherSource runStatus] eq 1} {
+		    dict set otherSource runStatus 0
+		    set ::GET::activeProviders($otherid) $otherSource
+            } else {
+		    set alreadyStopped 1
+	    }
+        }
+    }
+
+    if {$alreadyStopped eq 0} {
+        ::GET::changeAcquisitionState $id getEccSoapClient stop
+
+        set source [::GET::getActiveSource $id]
+
+        dict set source runStatus 0
+        set ::GET::activeProviders($id) $source
+
+        after 5000;                  # Let this run down.
+    }
 }
 ##
 # ::GET::emitEndRun
@@ -732,9 +812,9 @@ proc ::GET::startEccServer params {
         }
     }
 
-    set command [file join $::GET::getBinDir getEccServer]
+    set command [file join $::GET::getBinDir getEccSoapServer]
     
-    set info [ssh::sshpid $host [list $command -a :$port]]
+    set info [ssh::sshpid $host [list $command --config-repo-url=/home/fribdaq/fribdaq/]]
     
     set pid [lindex $info 0]
     set fd  [lindex $info 1]
@@ -777,6 +857,11 @@ proc ::GET::startNsclRouter params {
     set ringname [::GET::ringname [dict get $params datauri]]
     set srcid    [dict get $params datasourceid]
     set tsSrc    [dict get $params timestampsource]
+    if {[string first $ringname "mutant0"] != -1 || [string first $ringname "mutant1"] != -1} {
+	    set protocol FDT
+    } else {
+	    set protocol TCP
+    }
 
     
     set program \
@@ -785,6 +870,7 @@ proc ::GET::startNsclRouter params {
     set info [ssh::sshpid $host [list $program \
 	--controlservice $controlip:$controlsvc \
 	--dataservice $dataip:$datasvc        \
+	--protocol $protocol \
         --ring $ringname --id $srcid --timestamp $tsSrc --outputtype RingBuffer]]
     
     set pid [lindex $info 0]
