@@ -64,6 +64,7 @@ namespace eval GET {
         outputring  [list {Ring name into which datauri and stateuri items are merged}] \
         timestampsource [list {Identifies what's put in to the timestamp of GET ring items}] \
         datasourceid    [list {Source Id put into body headers for this source}]   \
+        workdir         [list {Workdir containing configuration-*.xml files}] \
     ]
     #
     #  This provides a lookup table between the keys above and option names in
@@ -78,6 +79,7 @@ array set ::GET::optionlookup [list                                      \
     dataip -dataip dataservice -dataservice                                 \
     controlip -controlip controlservice -controlservice                      \
     coboip -coboip coboservice -coboservice                              \
+    workdir -workdir \
 ]
 
 ##
@@ -277,6 +279,8 @@ snit::widgetadaptor ::GET::HostPrompts {
     delegate option -coboip to coboservice as -ip
     delegate option -coboservice to coboservice as -service
 
+    option -workdir
+
 #    option -dataservice -default 46005
 # (controlservice    option -eccservice   -default 46003
     
@@ -286,7 +290,7 @@ snit::widgetadaptor ::GET::HostPrompts {
         ttk::label $win.publiclabel -text "Public IP DNS name"
         ttk::entry $win.publicip    -textvariable [myvar options(-spdaq)] -width 25
         
-        ttk::label $win.ecclabel -text "getEccServer"
+        ttk::label $win.ecclabel -text "getEccSoapServer"
         install eccservice using GET::Service $win.eccservice
         
         ttk::label $win.ctllabel -text "Data router control"
@@ -297,6 +301,9 @@ snit::widgetadaptor ::GET::HostPrompts {
         
         ttk::label $win.cobolabel -text "Cobo target service"
         install coboservice using GET::Service $win.coboservice
+
+        ttk::label $win.workdirlabel -text "Working dir"
+        ttk::entry $win.workdir      -textvariable [myvar options(-workdir)] -width 25
         
         ##
         #  Lay stuff out.
@@ -306,6 +313,7 @@ snit::widgetadaptor ::GET::HostPrompts {
         grid $win.ctllabel  $controlservice
         grid $win.datalabel $dataservice
         grid $win.cobolabel $coboservice
+        grid $win.workdirlabel $win.workdir
         
         
         # Set defaults for service numbers.
@@ -530,6 +538,7 @@ snit::widgetadaptor ::GET::GetPromptForm {
     delegate option -controlservice to networkParameters
     delegate option -coboip     to networkParameters
     delegate option -coboservice to networkParameters
+    delegate option -workdir     to networkParameters
     
     #
     

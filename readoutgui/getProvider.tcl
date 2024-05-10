@@ -48,11 +48,6 @@ namespace eval ::GET {
     variable getBinDir    [file join /usr opt GET bin]
     variable daqbin       $::env(DAQBIN)
 
-    # User interface stuff:
-    
-    variable pulserCheckbutton "";      # pulser checkbutton widget.
-    variable startPulser  0;            # Reflects the state of the pulser check
-
     # Storage for shared information
 
     variable sharedInfo
@@ -318,7 +313,7 @@ proc ::GET::initialProcessCleanup id {
     set routerhost $gethost
     set thishost [exec hostname]
 
-    set getpids [RemoteUtil::remotePid $gethost getEccServer]
+    set getpids [RemoteUtil::remotePid $gethost getEccSoapServer]
     set routerpids [RemoteUtil::remotePid $routerhost nscldatarouter]
     set ringmergepids [RemoteUtil::remotePid $thishost ringmerge]
 
@@ -338,7 +333,7 @@ proc ::GET::initialProcessCleanup id {
 #ringmerge: [llength $ringmergepids] process(es)"]
         
 #        if {$response eq yes} {
-            puts "Killing getEccServer(s)...."
+            puts "Killing getEccSoapServer(s)...."
             RemoteUtil::kill $gethost $getpids
             puts "Killing nscldatarouter(s)...."
             RemoteUtil::kill $routerhost $routerpids
@@ -403,7 +398,7 @@ proc ::GET::startPersistentProcesses id {
     set info [::GET::getActiveSource $id]
     set params [dict get $info parameterization]
     
-    set result [::GET::startEccServer $params]
+    set result [::GET::startEccSoapServer $params]
     dict set info geteccserver [lindex $result 0]
     dict set info eccserveroutput [lindex $result 1]
 
@@ -429,7 +424,7 @@ proc ::GET::startPersistentProcesses id {
 
     # Since it takes time to run stuff, updating comes at the end
 
-    ::GET::checkAndUpdatePid [dict get $params eccip] getEccServer getpids
+    ::GET::checkAndUpdatePid [dict get $params eccip] getEccSoapServer getpids
     ::GET::checkAndUpdatePid [dict get $params spdaq] nscldatarouter routerpids
     ::GET::checkAndUpdatePid [exec hostname] ringmerge ringmergepids
     lappend ::GET::sharedInfo(pipepids) {*}[::GET::removeDuplicates \
@@ -550,16 +545,9 @@ proc ::GET::changeAcquisitionState {id program control} {
     set daqcontrolfd [dict get $info daqcontrolfd]
     set ecchost [dict get $params eccip]
     set eccsvc [dict get $params eccservice]
-    set eccArgs $ecchost:$eccsvc
-
-    set coboip [dict get $params coboip]
-    set cobosvc [dict get $params coboservice]
-    set coboArgs $coboip:$cobosvc
 
     set program [file join $::GET::getBinDir $program]
-    set command [list $program $control]
-#    set command [list $program -c $control -t $coboArgs -e $eccArgs \
-#                        -p [expr {$::GET::startPulser ? "on" : "off"}]]
+    set command [list $program --host=$ecchost --port=$eccsvc $control]
 
     puts $daqcontrolfd $command
 }
@@ -776,7 +764,7 @@ proc ::GET::killProcess {info host pidkey pipekey processname arrayid} {
     }
 }
 ##
-# ::GET::startEccServer
+# ::GET::startEccSoapServer
 #     Starts the getEccServer program. If multiple datasources share
 #     the same getEccServer host, starts only one, then shares the information.
 #
@@ -791,7 +779,7 @@ proc ::GET::killProcess {info host pidkey pipekey processname arrayid} {
 # @note -sstdout and stderr from the ssh pipe are caught by our
 #        ::GET::handleOuptut proc.
 # 
-proc ::GET::startEccServer params {
+proc ::GET::startEccSoapServer params {
     set host [dict get $params eccip]
     set port [dict get $params eccservice]
 
@@ -814,7 +802,7 @@ proc ::GET::startEccServer params {
 
     set command [file join $::GET::getBinDir getEccSoapServer]
     
-    set info [ssh::sshpid $host [list $command --config-repo-url=/home/fribdaq/fribdaq/]]
+    set info [ssh::sshpid $host [list $command --port=$port --config-repo-url=[dict get $params workdir]]]
     
     set pid [lindex $info 0]
     set fd  [lindex $info 1]
@@ -857,11 +845,6 @@ proc ::GET::startNsclRouter params {
     set ringname [::GET::ringname [dict get $params datauri]]
     set srcid    [dict get $params datasourceid]
     set tsSrc    [dict get $params timestampsource]
-    if {[string first $ringname "mutant0"] != -1 || [string first $ringname "mutant1"] != -1} {
-	    set protocol FDT
-    } else {
-	    set protocol TCP
-    }
 
     
     set program \
@@ -870,7 +853,6 @@ proc ::GET::startNsclRouter params {
     set info [ssh::sshpid $host [list $program \
 	--controlservice $controlip:$controlsvc \
 	--dataservice $dataip:$datasvc        \
-	--protocol $protocol \
         --ring $ringname --id $srcid --timestamp $tsSrc --outputtype RingBuffer]]
     
     set pid [lindex $info 0]
@@ -1112,55 +1094,110 @@ proc ::GET::handleOutput {tabtitle fd} {
 
 proc GET::SetupGui {} {
     ttk::labelframe .getcontrols -text {GET controls}
-    set ::GET::pulserCheckButton [ttk::checkbutton .getcontrols.pulser \
-        -text {Start Pulser} -onvalue 1 -offvalue 0 -variable GET::startPulser \
-        -state disabled
-    ]
+    ttk::frame .getcontrols.statecontrols
 
-    set ::cconfiged [file join $::GET::getBinDir cconfiged]
+    set ::cconfiged        [file join $::GET::getBinDir cconfiged]
 
-    set ::GET::hwdescBrowserButton [ttk::button .getcontrols.hwdescBrowserButton \
-    -text "Select HWDesc" \
-    -command {GET::openFileBrowser "Select Hardware Description File" GET::hwdescFile}]
-    set ::GET::hwdescModifyButton [ttk::button .getcontrols.hwdescModifyMotton \
-    -text "Modify" \
-    -command {exec $cconfiged $GET::hwdescFile}]
-    set ::GET::hwdescTextField [ttk::entry .getcontrols.hwdescTextField \
-    -textvariable GET::hwdescFile -state readonly]
-
-    set ::GET::configurationBrowserButton [ttk::button \
-    .getcontrols.configurationBrowserButton -text "Select Configuration" \
+    set ::GET::configurationBrowserButton [ttk::button .getcontrols.configurationBrowserButton \
+    -text "Select Configuration" -state disabled \
     -command {GET::openFileBrowser "Select Configuration File" GET::configurationFile}]
-    set ::GET::configurationModifyButton [ttk::button \
-    .getcontrols.configurationModifyMotton -text "Modify" \
+    set ::GET::configurationModifyButton [ttk::button .getcontrols.configurationModifyButton \
+    -text "Modify" -state disabled \
     -command {exec $cconfiged $GET::configurationFile}]
-    set ::GET::configurationTextField [ttk::entry \
-    .getcontrols.configurationTextField \
+    set ::GET::configurationTextField [ttk::entry .getcontrols.configurationTextField \
     -textvariable GET::configurationFile -state readonly]
 
-    set ::GET::startConfiguringButton [ttk::button \
-    .getcontrols.startConfiguringButton -text "Configure CoBo(s)" \
-    -command {GET::startConfiguring} -state disabled]
+    set ::GET::datalinksBrowserButton [ttk::button \
+    .getcontrols.datalinksBrowserButton -text "Select Datalinks file" -state disabled \
+    -command {GET::openFileBrowser "Select Datalinks File" GET::datalinksFile}]
+    set ::GET::datalinksModifyButton [ttk::button \
+    .getcontrols.datalinksModifyButton -text "Modify" -state disabled \
+    -command {exec $cconfiged $GET::datalinksFile}]
+    set ::GET::datalinksTextField [ttk::entry \
+    .getcontrols.datalinksTextField \
+    -textvariable GET::datalinksFile -state readonly]
+
+    set ::GET::describeButton [ttk::button \
+    .getcontrols.statecontrols.describeButton -text "Describe" -state disabled \
+    -command {GET::getEccSoapClientCommand "describe"}]
+
+    set ::GET::undoButton [ttk::button \
+    .getcontrols.statecontrols.undoButton -text "Undo" -state disabled \
+    -command {GET::getEccSoapClientCommand "undo"}]
+
+    set ::GET::prepareButton [ttk::button \
+    .getcontrols.statecontrols.prepareButton -text "Prepare" -state disabled \
+    -command {GET::getEccSoapClientCommand "prepare"}]
+
+    set ::GET::breakupButton [ttk::button \
+    .getcontrols.statecontrols.breakupButton -text "Breakup" -state disabled \
+    -command {GET::getEccSoapClientCommand "breakup"}]
+
+    set ::GET::configureButton [ttk::button \
+    .getcontrols.statecontrols.configureButton -text "Configure" -state disabled \
+    -command {GET::getEccSoapClientCommand "configure"}]
 
     set padx 1
     set pady 1
 
     grid columnconfigure .getcontrols 0 -weight 1
 
-    grid $::GET::pulserCheckButton -row 0 -column 0 -sticky w
-    grid $::GET::startConfiguringButton -row 0 -column 1 -padx $padx -pady $pady -columnspan 2 -sticky e
+    grid $::GET::configurationTextField     -row 0 -column 0 -columnspan 3 -padx $padx -sticky we
+    grid $::GET::configurationBrowserButton -row 0 -column 3 -padx $padx -pady $pady -sticky we
+    grid $::GET::configurationModifyButton  -row 0 -column 4 -padx $padx -pady $pady -sticky we
 
-    grid rowconfigure .getcontrols 1 -minsize 20
+    grid $::GET::datalinksTextField     -row 1 -column 0 -columnspan 3 -padx $padx -sticky we
+    grid $::GET::datalinksBrowserButton -row 1 -column 3 -padx $padx -pady $pady -sticky we
+    grid $::GET::datalinksModifyButton  -row 1 -column 4 -padx $padx -pady $pady -sticky we
 
-    grid $::GET::hwdescTextField -row 2 -column 0 -padx $padx -sticky we
-    grid $::GET::hwdescBrowserButton -row 2 -column 1 -padx $padx -pady $pady -sticky we
-    grid $::GET::hwdescModifyButton -row 2 -column 2 -padx $padx -pady $pady -sticky we
+    set padx 10
+    set pady 40
+    set revertGap 30
 
-    grid $::GET::configurationTextField -row 3 -column 0 -padx $padx -sticky we
-    grid $::GET::configurationBrowserButton -row 3 -column 1 -padx $padx -pady $pady -sticky we
-    grid $::GET::configurationModifyButton -row 3 -column 2 -padx $padx -pady $pady -sticky we
+    grid .getcontrols.statecontrols -row 2 -column 0 -columnspan 5 -sticky nsew
+    grid columnconfigure .getcontrols.statecontrols 0 -weight 1
+    grid columnconfigure .getcontrols.statecontrols 2 -weight 1
+    grid columnconfigure .getcontrols.statecontrols 4 -weight 1
+    grid $::GET::describeButton  -row 0 -column 0 -padx $padx -pady $pady -sticky we
+    grid $::GET::undoButton      -row 0 -column 1 -padx $revertGap -pady $pady -sticky we
+    grid $::GET::prepareButton   -row 0 -column 2 -padx $padx -pady $pady -sticky we
+    grid $::GET::breakupButton   -row 0 -column 3 -padx $revertGap -pady $pady -sticky we
+    grid $::GET::configureButton -row 0 -column 4 -padx $padx -pady $pady -sticky we
 
     grid .getcontrols -sticky nsew
+
+    ttk::labelframe .getpartialcontrols -text {GET partial controls}
+
+    set ::GET::beginPartialButton    [ttk::button .getpartialcontrols.beginPartialButton \
+    -text "Begin" -state disabled \
+    -command {GET::getEccSoapClientCommand "begin-partial"}]
+    set ::GET::coboCSVListLabel      [ttk::label .getpartialcontrols.coboCSVListLabel \
+    -text "CoBo List:" -justify right]
+    set ::GET::coboCSVListField      [ttk::entry .getpartialcontrols.coboCSVListField \
+    -textvariable GET::coboCSVList -state disabled]
+    set ::GET::preparePartialButton  [ttk::button .getpartialcontrols.preparePartialButton \
+    -text "Prepare" -state disabled \
+    -command {GET::getEccSoapClientCommand "prepare-partial" $::GET::coboCSVList}]
+    set ::GET::configurePartialButton  [ttk::button .getpartialcontrols.configurePartialButton \
+    -text "Configure" -state disabled \
+    -command {GET::getEccSoapClientCommand "configure-partial" $::GET::coboCSVList}]
+    set ::GET::finishPartialButton  [ttk::button .getpartialcontrols.finishPartialButton \
+    -text "Finish" -state disabled \
+    -command {GET::getEccSoapClientCommand "finish-partial"}]
+
+    set padx 1
+    set pady 1
+
+    grid columnconfigure .getpartialcontrols 2 -weight 1
+
+    grid $::GET::beginPartialButton     -row 0 -column 0 -padx $padx -pady $pady -sticky we
+    grid $::GET::coboCSVListLabel       -row 0 -column 1 -padx $padx -pady $pady -sticky we
+    grid $::GET::coboCSVListField       -row 0 -column 2 -padx $padx -pady $pady -sticky we
+    grid $::GET::preparePartialButton   -row 0 -column 3 -padx $padx -pady $pady -sticky we
+    grid $::GET::configurePartialButton -row 0 -column 4 -padx $padx -pady $pady -sticky we
+    grid $::GET::finishPartialButton    -row 0 -column 5 -padx $padx -pady $pady -sticky we
+
+    grid .getpartialcontrols -sticky nsew
 }
 
 ##
@@ -1190,7 +1227,7 @@ proc GET::checkFileSelection {filename returnValue} {
 #
 proc GET::openFileBrowser {title returnVariable} {
     set ::filetypes {
-        {{XCFG Files} {.xcfg}}
+        {{XML Files} {.xml}}
         {{All Files}  *      }
     }
 
@@ -1199,58 +1236,36 @@ proc GET::openFileBrowser {title returnVariable} {
 }
 
 ##
-# GET::startConfiguring
-#   Configuring CoBo(s)
+# GET::getEccSoapClientCommand
+#   Sending command using getEccSoapClient to getEccSoapServer
 #
-proc GET::startConfiguring {} {
-    if {![info exists GET::hwdescFile] || ![info exists GET::configurationFile]
-        || $GET::hwdescFile eq "" || $GET::configurationFile eq ""} {
-            tk_messageBox \
-                -icon error -title "File(s) needed" -type ok \
-                -message "hwdesc and/or configuration file(s) are not set or don't exist!"
+proc GET::getEccSoapClientCommand {control {coboids -1}} {
+    set info [::GET::getActiveSource 0]
+    set params [dict get $info parameterization]
 
-        return
-    }
+    set daqcontrolfd [dict get $info daqcontrolfd]
+    set ecchost [dict get $params eccip]
+    set eccsvc [dict get $params eccservice]
 
-    set targetDict [dict create]
-    array set targetArgs [list]
-    foreach id [array names ::GET::activeProviders] {
-        set info [::GET::getActiveSource $id]
-        set params [dict get $info parameterization]
+    set configuration [exec cat [file join $::GET::configurationFile] | tr -d '\t' | tr -d '\n']
+    set datalinks [exec cat [file join $::GET::datalinksFile] | tr -d '\t' | tr -d '\n']
 
-        set pipe [dict get $info daqcontrolfd]
+    set program [file join $::GET::getBinDir getEccSoapClient]
+    if {$control eq "prepare-partial" || $control eq "configure-partial"} {
+      set coboids [string map {"," " "} $coboids]
+      foreach coboid $coboids {
+        set command [list $program --host=$ecchost --port=$eccsvc $control '$configuration' $coboid]
 
-        set ecchost [dict get $params eccip]
-        set eccsvc [dict get $params eccservice]
-        set eccArg $ecchost:$eccsvc
+        puts $daqcontrolfd [join $command]
+      }
+    } else {
+      set command [list $program --host=$ecchost --port=$eccsvc $control '$configuration' '$datalinks']
+      puts $daqcontrolfd [join $command]
+      if {$control eq "breakup"} {
+        set command [list $program --host=$ecchost --port=$eccsvc undo '$configuration' '$datalinks']
 
-        set coboip [dict get $params coboip]
-        set cobosvc [dict get $params coboservice]
-        set dataip [dict get $params dataip]
-        set datasvc [dict get $params dataservice]
-
-        set targetArg $coboip:$cobosvc-$dataip:$datasvc
-        if {![dict exists $targetDict $pipe]} {
-            dict set targetDict $pipe $eccArg $targetArg
-        } else {
-            if {[dict exists $targetDict $pipe $eccArg]} {
-                dict with targetDict $pipe {lappend $eccArg $targetArg}
-            } else {
-                dict set targetDict $pipe $eccArg $targetArg
-            }
-        }
-    }
-
-    set program [file join $::GET::getNsclDaqBindir configure]
-    foreach pipe [dict keys $targetDict] {
-        foreach eccArg [dict keys [dict get $targetDict $pipe]] {
-            set command [list $program -e $eccArg -h $GET::hwdescFile -c $GET::configurationFile]
-            foreach targetArg [dict get $targetDict $pipe $eccArg] {
-                lappend command [join [list -t $targetArg]]
-            }
-
-            puts $pipe [join $command]
-        }
+        puts $daqcontrolfd [join $command]
+      }
     }
 }
 
@@ -1261,18 +1276,26 @@ proc ::GET::attach state {}
 #
 
 proc ::GET::enter {from to} {
-    changeWidgetStateWhenEnter $from $to $::GET::pulserCheckButton
-    changeWidgetStateWhenEnter $from $to $::GET::startConfiguringButton
-    changeWidgetStateWhenEnter $from $to $::GET::hwdescBrowserButton
-    changeWidgetStateWhenEnter $from $to $::GET::hwdescModifyButton
-    changeWidgetStateWhenEnter $from $to $::GET::configurationBrowserButton
-    changeWidgetStateWhenEnter $from $to $::GET::configurationModifyButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::configurationBrowserButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::configurationModifyButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::datalinksBrowserButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::datalinksModifyButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::describeButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::undoButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::prepareButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::breakupButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::configureButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::beginPartialButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::coboCSVListField
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::preparePartialButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::configurePartialButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::finishPartialButton
 
     if {$from eq "Starting" && $to eq "Halted"} {
         tk_messageBox \
             -icon info -title "GET datasource" -type ok \
             -message "Action Needed!" \
-            -detail "Remember to configure CoBo(s)!"
+            -detail "Remember to configure CoBo(s) and check the daqcontrol tab status!"
     }
 }
 ##

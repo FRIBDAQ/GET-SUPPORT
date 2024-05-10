@@ -8,12 +8,19 @@
       <title>NSCL GET interface software</title>
       <author><firstname>Ron</firstname><surname>Fox</surname></author>
       <author><firstname>Giordano</firstname><surname>Cerizza</surname></author>      
+      <author><firstname>Genie</firstname><surname>Jhang</surname></author>
       <revhistory>
           <revision>
              <revnumber>0.1</revnumber>
              <date>October 17, 2018</date>
              <authorinitials>RF</authorinitials>
              <revremark>Original Release</revremark>
+          </revision>
+          <revision>
+             <revnumber>0.2</revnumber>
+             <date>May 8, 2024</date>
+             <authorinitials>GJ</authorinitials>
+             <revremark>Update to use getEccSoapServer and getEccSoapClient for reliability</revremark>
           </revision>
       </revhistory>
     </bookinfo>
