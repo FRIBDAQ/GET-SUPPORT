@@ -1101,18 +1101,12 @@ proc GET::SetupGui {} {
     set ::GET::configurationBrowserButton [ttk::button .getcontrols.configurationBrowserButton \
     -text "Select Configuration" -state disabled \
     -command {GET::openFileBrowser "Select Configuration File" GET::configurationFile}]
-    set ::GET::configurationModifyButton [ttk::button .getcontrols.configurationModifyButton \
-    -text "Modify" -state disabled \
-    -command {exec $cconfiged $GET::configurationFile}]
     set ::GET::configurationTextField [ttk::entry .getcontrols.configurationTextField \
     -textvariable GET::configurationFile -state readonly]
 
     set ::GET::datalinksBrowserButton [ttk::button \
     .getcontrols.datalinksBrowserButton -text "Select Datalinks file" -state disabled \
     -command {GET::openFileBrowser "Select Datalinks File" GET::datalinksFile}]
-    set ::GET::datalinksModifyButton [ttk::button \
-    .getcontrols.datalinksModifyButton -text "Modify" -state disabled \
-    -command {exec $cconfiged $GET::datalinksFile}]
     set ::GET::datalinksTextField [ttk::entry \
     .getcontrols.datalinksTextField \
     -textvariable GET::datalinksFile -state readonly]
@@ -1144,11 +1138,9 @@ proc GET::SetupGui {} {
 
     grid $::GET::configurationTextField     -row 0 -column 0 -columnspan 3 -padx $padx -sticky we
     grid $::GET::configurationBrowserButton -row 0 -column 3 -padx $padx -pady $pady -sticky we
-    grid $::GET::configurationModifyButton  -row 0 -column 4 -padx $padx -pady $pady -sticky we
 
     grid $::GET::datalinksTextField     -row 1 -column 0 -columnspan 3 -padx $padx -sticky we
     grid $::GET::datalinksBrowserButton -row 1 -column 3 -padx $padx -pady $pady -sticky we
-    grid $::GET::datalinksModifyButton  -row 1 -column 4 -padx $padx -pady $pady -sticky we
 
     set padx 10
     set pady 40
@@ -1175,6 +1167,9 @@ proc GET::SetupGui {} {
     -text "CoBo List:" -justify right]
     set ::GET::coboCSVListField      [ttk::entry .getpartialcontrols.coboCSVListField \
     -textvariable GET::coboCSVList -state disabled]
+    set ::GET::breakupPartialButton  [ttk::button .getpartialcontrols.breakupPartialButton \
+    -text "Breakup" -state disabled \
+    -command {GET::getEccSoapClientCommand "breakup-partial" $::GET::coboCSVList}]
     set ::GET::preparePartialButton  [ttk::button .getpartialcontrols.preparePartialButton \
     -text "Prepare" -state disabled \
     -command {GET::getEccSoapClientCommand "prepare-partial" $::GET::coboCSVList}]
@@ -1193,9 +1188,10 @@ proc GET::SetupGui {} {
     grid $::GET::beginPartialButton     -row 0 -column 0 -padx $padx -pady $pady -sticky we
     grid $::GET::coboCSVListLabel       -row 0 -column 1 -padx $padx -pady $pady -sticky we
     grid $::GET::coboCSVListField       -row 0 -column 2 -padx $padx -pady $pady -sticky we
-    grid $::GET::preparePartialButton   -row 0 -column 3 -padx $padx -pady $pady -sticky we
-    grid $::GET::configurePartialButton -row 0 -column 4 -padx $padx -pady $pady -sticky we
-    grid $::GET::finishPartialButton    -row 0 -column 5 -padx $padx -pady $pady -sticky we
+    grid $::GET::breakupPartialButton   -row 0 -column 3 -padx $padx -pady $pady -sticky we
+    grid $::GET::preparePartialButton   -row 0 -column 4 -padx $padx -pady $pady -sticky we
+    grid $::GET::configurePartialButton -row 0 -column 5 -padx $padx -pady $pady -sticky we
+    grid $::GET::finishPartialButton    -row 0 -column 6 -padx $padx -pady $pady -sticky we
 
     grid .getpartialcontrols -sticky nsew
 }
@@ -1277,9 +1273,7 @@ proc ::GET::attach state {}
 
 proc ::GET::enter {from to} {
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::configurationBrowserButton
-    ::GET::changeWidgetStateWhenEnter $from $to $::GET::configurationModifyButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::datalinksBrowserButton
-    ::GET::changeWidgetStateWhenEnter $from $to $::GET::datalinksModifyButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::describeButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::undoButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::prepareButton
@@ -1287,6 +1281,7 @@ proc ::GET::enter {from to} {
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::configureButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::beginPartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::coboCSVListField
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::breakupPartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::preparePartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::configurePartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::finishPartialButton
