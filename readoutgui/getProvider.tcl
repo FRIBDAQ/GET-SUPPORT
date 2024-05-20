@@ -1170,6 +1170,9 @@ proc GET::SetupGui {} {
     set ::GET::breakupPartialButton  [ttk::button .getpartialcontrols.breakupPartialButton \
     -text "Breakup" -state disabled \
     -command {GET::getEccSoapClientCommand "breakup-partial" $::GET::coboCSVList}]
+    set ::GET::describePartialButton  [ttk::button .getpartialcontrols.describePartialButton \
+    -text "Describe" -state disabled \
+    -command {GET::getEccSoapClientCommand "describe-partial" $::GET::coboCSVList}]
     set ::GET::preparePartialButton  [ttk::button .getpartialcontrols.preparePartialButton \
     -text "Prepare" -state disabled \
     -command {GET::getEccSoapClientCommand "prepare-partial" $::GET::coboCSVList}]
@@ -1189,9 +1192,10 @@ proc GET::SetupGui {} {
     grid $::GET::coboCSVListLabel       -row 0 -column 1 -padx $padx -pady $pady -sticky we
     grid $::GET::coboCSVListField       -row 0 -column 2 -padx $padx -pady $pady -sticky we
     grid $::GET::breakupPartialButton   -row 0 -column 3 -padx $padx -pady $pady -sticky we
-    grid $::GET::preparePartialButton   -row 0 -column 4 -padx $padx -pady $pady -sticky we
-    grid $::GET::configurePartialButton -row 0 -column 5 -padx $padx -pady $pady -sticky we
-    grid $::GET::finishPartialButton    -row 0 -column 6 -padx $padx -pady $pady -sticky we
+    grid $::GET::describePartialButton  -row 0 -column 4 -padx $padx -pady $pady -sticky we
+    grid $::GET::preparePartialButton   -row 0 -column 5 -padx $padx -pady $pady -sticky we
+    grid $::GET::configurePartialButton -row 0 -column 6 -padx $padx -pady $pady -sticky we
+    grid $::GET::finishPartialButton    -row 0 -column 7 -padx $padx -pady $pady -sticky we
 
     grid .getpartialcontrols -sticky nsew
 }
@@ -1247,10 +1251,14 @@ proc GET::getEccSoapClientCommand {control {coboids -1}} {
     set datalinks [exec cat [file join $::GET::datalinksFile] | tr -d '\t' | tr -d '\n']
 
     set program [file join $::GET::getBinDir getEccSoapClient]
-    if {$control in [list "breakup-partial" "prepare-partial" "configure-partial"]} {
+    if {$control in [list "breakup-partial" "describe-partial" "prepare-partial" "configure-partial"]} {
       set coboids [string map {"," " "} $coboids]
       foreach coboid $coboids {
-        set command [list $program --host=$ecchost --port=$eccsvc $control '$configuration' $coboid]
+        if {$control eq "breakup-partial"} {
+          set command [list $program --host=$ecchost --port=$eccsvc $control $coboid]
+        } else {
+          set command [list $program --host=$ecchost --port=$eccsvc $control '$configuration' $coboid]
+        }
 
         puts $daqcontrolfd [join $command]
       }
@@ -1282,6 +1290,7 @@ proc ::GET::enter {from to} {
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::beginPartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::coboCSVListField
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::breakupPartialButton
+    ::GET::changeWidgetStateWhenEnter $from $to $::GET::describePartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::preparePartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::configurePartialButton
     ::GET::changeWidgetStateWhenEnter $from $to $::GET::finishPartialButton
