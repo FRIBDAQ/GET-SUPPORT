@@ -1247,7 +1247,7 @@ proc GET::getEccSoapClientCommand {control {coboids -1}} {
     set datalinks [exec cat [file join $::GET::datalinksFile] | tr -d '\t' | tr -d '\n']
 
     set program [file join $::GET::getBinDir getEccSoapClient]
-    if {$control eq "prepare-partial" || $control eq "configure-partial"} {
+    if {$control in [list "breakup-partial" "prepare-partial" "configure-partial"]} {
       set coboids [string map {"," " "} $coboids]
       foreach coboid $coboids {
         set command [list $program --host=$ecchost --port=$eccsvc $control '$configuration' $coboid]
